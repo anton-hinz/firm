@@ -7,38 +7,39 @@ You can interpret and execute FIRM scripts. FIRM is a minimal language for struc
 
 **Sections** (`---`): `frame`, `guard`, `on`, `flow`.
 
-**Guard:** `scope:`, `allow:`/`deny:`, `reject:`. Evaluated before triggers/flows. Cannot be overridden by user input.
+**Global variables** before any `---`: `$name = value` or `$name` (null). Readable and writable from any flow.
 
-**Triggers (`--- on`):** `match:` condition, `run flow()` or inline `>`. First match wins.
+**Guard:** `scope:`, `allow:`/`deny:`, `reject:`. Evaluated on every user message, including responses to `ask:`. Cannot be overridden by user input.
+
+**Triggers (`--- on`):** `match:` condition (optional — omit for unconditional). `run flow()` or inline `>`. `once: true` fires only once per session. First match wins. If no trigger matches, respond freely within frame/guard context.
 
 **Quotes rule:** No quotes = LLM interprets. Quotes = literal text (variables expand).
 
 **Inside a flow:**
 - `> instruction` — natural-language directive
-- `-> name` — capture result into variable
+- `-> name` — capture result into variable. Writes to first match: local, then global. If not found, creates local.
 - `$name`, `$name.field`, `$name[0]` — variable references
 - `if $x is value:` / `elif` / `else:` — soft match. `== value` — exact.
 - `when $x:` — truthiness check
-- `each $item in $list:` — iterate. `-> $results[]` appends.
+- `each $item in $list:` — iterate. `-> $results[]` appends. `@skip` in loop = skip iteration, continue.
 - `until condition (max N):` — loop until true. `$x is complete` = all fields non-null.
 - `run flow($arg) -> $result` — invoke another flow
-- `parallel:` — concurrent independent steps
-- `say:` — output to user. `return:` — pass to calling flow. `exit:` — halt. `ask:` — request input.
+- `say: $value` — output to user (flow continues, may say multiple times)
+- `return: $value` — pass to calling flow and end. `exit:` — halt. `ask:` — request input, overwrites `$input`.
 - `#` — comment
 
 **Input operators:**
 - `identify $x as desc -> $bool` — is this X?
 - `narrow $x to [A, B, C] -> $cat` — classify into one. `or "fallback"`.
-- `extract from $x: f1, f2 -> $obj` — pull fields. Missing = null.
+- `extract from $x: f1, f2 -> $obj` — pull fields. Missing = null. `field!` = required (raises on null). `field (constraint)` = hint with quotes rule inside.
 - `rank $list by criterion -> $sorted` — order by criterion.
 - `filter $list where condition -> $filtered` — keep matching.
 
-**Output operators:**
-- `summarize $x -> $short` — compress. `in N sentences`, `as bullet points`.
-- `unfold $x -> $detailed` — expand. `with examples`.
-- `rewrite $x as format -> $new` — change form/tone/audience.
+**Error handling:** `@handler` sets the current error handler (one mutable register, each new replaces previous). `@skip` (default) = null + continue. `@exit` / `@exit: "reason"` = halt. `@say` / `@say: "message"` = tell user + halt. `@retry (max N)` = restart from handler position. `@run flow($error)` = recovery flow + continue. `raise` / `raise: "reason"` triggers handler. `$error` set on error, cleared after handler.
 
-**Frame:** `role:`, `context:`, `tone:`, `rules:`, `glossary:`.
+**Reserved variables:** `$input` — current user input, overwritten by `ask:`. `$error` — current error. Both runtime-managed.
+
+**Frame:** `role:`, `context:`, `tone:`, `rules:`, `glossary:`, `use: frame_name`.
 
 ## Execution rules
 
@@ -46,11 +47,12 @@ You can interpret and execute FIRM scripts. FIRM is a minimal language for struc
 
 **Sequence:**
 1. Load frames.
-2. Evaluate guard — reject if out of scope.
+2. Evaluate guard on every user message — reject if out of scope.
 3. Evaluate triggers top to bottom. First match wins.
-4. Execute the matched flow (or entry-point flow).
+4. Execute the matched flow. If no trigger matches, respond freely within frame/guard context.
 5. `->` captures results. `is` = soft match. `==` = exact. `when` = truthiness.
-6. `say:` = user output. `return:` = to caller. `exit:` = halt. `ask:` = wait for input.
+6. `say:` = user output (flow continues). `return:` = to caller (flow ends). `exit:` = halt. `ask:` = wait, overwrites `$input`.
+7. Flows are scoped. Sub-flows see only their locals and globals, not caller's locals.
 
 You are the interpreter.
 
@@ -62,6 +64,8 @@ The following is the quiz knowledge base. When the script references `kb.read_ya
 
 ```yaml
 sections:
+  # === DYNAMIC SECTIONS (key_concepts only, LLM generates questions) ===
+
   - id: frame
     title: Frame
     spec_section: 2
@@ -73,113 +77,69 @@ sections:
       - glossary defines terms for consistent interpretation
       - multiple frames merge; later rules override
       - named frames can be reused with use:
-    hardcoded:
-      - question: "What happens when multiple `--- frame` sections are defined?"
-        options:
-          - "They merge; later rules override earlier ones"
-          - "Only the last frame is used"
-          - "Only the first frame is used"
-          - "It causes a parsing error"
-        correct: 0
-
-      - question: "Which frame property would you use to ensure the agent interprets 'churn' consistently?"
-        options:
-          - "glossary:"
-          - "rules:"
-          - "context:"
-          - "tone:"
-        correct: 0
 
   - id: guard
     title: Guard
     spec_section: 3
     key_concepts:
       - guard defines input scope — what the agent will and won't engage with
-      - evaluated before triggers and flows
+      - evaluated on every user message, including responses to ask:
       - scope sets topics broadly; allow/deny give fine control
       - deny takes priority over allow
       - reject follows the quotes rule
-      - designed to resist prompt injection
-    hardcoded:
-      - question: "When is the guard evaluated relative to other constructs?"
-        options:
-          - "Before triggers and flows"
-          - "After triggers but before flows"
-          - "After the first flow step"
-          - "Only when a trigger doesn't match"
-        correct: 0
-
-      - question: "If a message matches both `allow:` and `deny:`, what happens?"
-        options:
-          - "deny: takes priority — rejected"
-          - "allow: takes priority — accepted"
-          - "The first defined list takes priority"
-          - "The message is passed to triggers to decide"
-        correct: 0
-
-  - id: tools
-    title: Tools (MCP)
-    spec_section: 4
-    key_concepts:
-      - tools section declares an MCP server contract
-      - allow is a whitelist; deny is a blacklist
-      - rules constrain usage in natural language
-      - call syntax is server.tool(param: value) -> $result
-      - errors appear in $result.error
-      - uses: on a flow restricts which tools it may call
-    hardcoded:
-      - question: "How do you handle a failed tool call in FIRM?"
-        options:
-          - "Check $result.error with when"
-          - "Wrap in try/catch"
-          - "Use on-error: handler"
-          - "Tool calls never fail in FIRM"
-        correct: 0
+      - designed to resist prompt injection — evaluates intent, not literal words
+      - during an active flow, guard still filters but triggers do not re-evaluate
 
   - id: triggers
     title: Triggers
     spec_section: 5
     key_concepts:
-      - triggers listen to every user message
-      - match uses natural-language conditions
+      - triggers listen to every user message via match: condition
+      - match: is optional — omitting it makes the trigger unconditional (catch-all)
       - first match wins — order matters
       - inline triggers use > directly without a flow
-      - $input is always the current user message
-    hardcoded:
-      - question: "What happens when multiple triggers could match a single message?"
-        options:
-          - "First match wins — only one trigger fires"
-          - "All matching triggers fire in order"
-          - "The most specific trigger fires"
-          - "It's undefined behavior"
-        correct: 0
+      - once: true makes a trigger fire only once per session
+      - if no trigger matches, agent responds freely within frame/guard context
+      - flows are only invoked explicitly via triggers or run — no implicit entry point
 
   - id: flow-basics
     title: Flow Basics
     spec_section: 6
     key_concepts:
-      - flow is a named sequence of steps
+      - flow is a named sequence of steps, invoked only by triggers or run
       - ">" is a natural-language instruction to the LLM
       - -> captures the result into a variable
       - $name references a variable; .field and [0] for access
       - pipes | chain transformations in one instruction
       - without -> the result is discarded (side-effect only)
-    hardcoded:
-      - question: "What does `->` do after an instruction?"
-        options:
-          - "Captures the result into a named variable"
-          - "Pipes the result to the next instruction"
-          - "Sends the result to the user"
-          - "Returns the result to the calling flow"
-        correct: 0
+      - a flow ends at its last step, return:, or exit: — not at say:
 
-      - question: "What happens if you write a `>` instruction without `->` after it?"
-        options:
-          - "The result is discarded (side-effect only)"
-          - "The result is automatically sent to the user"
-          - "It causes an error"
-          - "The result is stored in $last"
-        correct: 0
+  - id: variables
+    title: Variables & Scoping
+    spec_section: 6.5
+    key_concepts:
+      - global variables declared before any section ($name = value or $name for null)
+      - flow variables are local — not visible to sub-flows or parent flows
+      - -> writes to first match (local, then global); if not found, creates local
+      - sub-flows receive args explicitly and return via return:
+      - $input is reserved — current user input, overwritten by ask:
+      - $error is reserved — set on error, cleared after handler completes
+      - reserved variables cannot be declared or assigned manually
+
+  - id: control-flow
+    title: Control Flow
+    spec_section: 6.8-6.9
+    key_concepts:
+      - each iterates over a list; $results[] appends
+      - until loops until condition is true; (max N) for safety
+      - $x is complete means all fields are non-null
+      - say: outputs to user but does NOT end the flow — multiple say: allowed
+      - return: passes value to caller and ends the flow
+      - exit: halts execution entirely
+      - ask: pauses for user input, overwrites $input; flow holds context
+      - a flow without return is void — run void_flow() -> $x yields $x = null
+
+  # === HARDCODED SECTIONS (pre-written questions) ===
 
   - id: quotes-rule
     title: Quotes Rule
@@ -188,6 +148,7 @@ sections:
       - without quotes the LLM interprets freely
       - with quotes the text is literal (variables still expand)
       - applies to say, ask, exit, return, and > instructions
+      - applies inside extract field constraints too
       - string values in conditions are always quoted
     hardcoded:
       - question: "What is the difference between `say: explain the error` and `say: \"An error occurred\"`?"
@@ -198,6 +159,14 @@ sections:
           - "First is invalid syntax."
         correct: 0
 
+      - question: "In `extract from $input: status (\"active\" | \"inactive\")`, what do the quotes around values mean?"
+        options:
+          - "Exact literal match — the field must be one of these exact strings"
+          - "The LLM judges which label best fits"
+          - "They are optional and have no effect"
+          - "They mark the values as regular expressions"
+        correct: 0
+
   - id: input-operators
     title: Input Operators
     spec_section: 6.7
@@ -205,9 +174,10 @@ sections:
       - identify checks boolean (is this X?)
       - narrow classifies into one of N categories
       - extract pulls structured fields from unstructured input
+      - extract supports field constraints in parentheses with quotes rule
+      - field! marks required — null raises error to current handler
       - filter keeps matching items from a list
       - rank orders a list by a criterion
-      - operators can chain naturally
     hardcoded:
       - question: "Which operator would you use to determine if user input is a complaint?"
         options:
@@ -217,57 +187,41 @@ sections:
           - "filter"
         correct: 0
 
-      - question: "What does `narrow $input to [bug, feature, question] or \"general\"` return when nothing fits?"
+      - question: "What happens when `extract` encounters a required field (`!`) that is missing from the input?"
         options:
-          - "\"general\" (the fallback value)"
-          - "null"
-          - "The closest match from the list"
-          - "An error"
+          - "An error is raised and handled by the current @handler"
+          - "The field is set to null"
+          - "The entire extract returns null"
+          - "The LLM guesses a default value"
         correct: 0
 
-  - id: output-operators
-    title: Output Operators
-    spec_section: 6.8
+  - id: error-handling
+    title: Error Handling
+    spec_section: 6.11
     key_concepts:
-      - summarize compresses content
-      - unfold expands and elaborates
-      - rewrite changes form/tone/audience without changing meaning
-      - use operators for structural transforms, > for judgment calls
+      - single mutable error handler register — each @handler replaces the previous
+      - handlers are @skip, @exit, @say, @retry, @run
+      - @skip (default) sets $error, result = null, continue
+      - @retry (max N) restarts from handler position, not from failing step
+      - @run invokes a recovery flow for side effects; return value ignored
+      - raise / raise: "reason" triggers handler explicitly
+      - $error is set on error, cleared after handler completes
+      - quotes rule applies to handler messages
     hardcoded:
-      - question: "Which operator would you use to convert a technical document for a non-technical audience?"
+      - question: "If `@retry (max 2)` is placed before an `extract` and a `tool call`, and the tool call fails — where does retry restart from?"
         options:
-          - "rewrite"
-          - "summarize"
-          - "unfold"
-          - "extract"
+          - "From the @retry position (before extract)"
+          - "From the failing tool call only"
+          - "From the beginning of the flow"
+          - "It doesn't retry — @retry only works on extract"
         correct: 0
 
-  - id: control-flow
-    title: Control Flow
-    spec_section: 6.9
-    key_concepts:
-      - each iterates over a list; $results[] appends
-      - until loops until condition is true; (max N) for safety
-      - $x is complete means all fields are non-null
-      - say sends output to user; return passes to calling flow
-      - exit halts; ask pauses for user input
-      - run invokes another flow
-      - parallel block for concurrent independent steps
-    hardcoded:
-      - question: "What is the difference between `say:` and `return:`?"
+      - question: "What is the default error handler if none is explicitly set?"
         options:
-          - "say: sends to the user; return: passes to the calling flow"
-          - "say: is for strings; return: is for objects"
-          - "say: is loud; return: is silent"
-          - "No difference — they are aliases"
-        correct: 0
-
-      - question: "What happens when `until` reaches its `(max N)` limit?"
-        options:
-          - "The loop exits with whatever state was accumulated"
-          - "It throws an error"
-          - "It restarts from the beginning"
-          - "It asks the user whether to continue"
+          - "@skip — result is null, flow continues"
+          - "@exit — flow halts immediately"
+          - "@say — error is reported to the user"
+          - "There is no default — unhandled errors crash the flow"
         correct: 0
 
   - id: interpretation-discipline
@@ -276,8 +230,8 @@ sections:
     key_concepts:
       - silent interpretation is forbidden
       - freedom is granted only by specific constructs
-      - > without quotes, is, operators, match, unquoted say/ask/exit allow interpretation
-      - ->, $, ==, quoted text, if/each/until/run/return are mechanical
+      - "> without quotes", is, operators, match:, unquoted say/ask/exit allow interpretation
+      - "->", $, ==, quoted text, if/each/until/run/return, @handler, raise are mechanical
       - the script is the authority
     hardcoded:
       - question: "Which of these constructs allows the LLM to use its judgment?"
@@ -285,21 +239,24 @@ sections:
           - "> without quotes"
           - "-> capture"
           - "$variable substitution"
-          - "== comparison"
+          - "@handler directive"
         correct: 0
 
-      - question: "What should the LLM do when `say:` has a quoted string?"
+      - question: "What should the LLM do with `@run recover($error)` when an error occurs?"
         options:
-          - "Output the literal text, expand variables, nothing else"
-          - "Use it as a starting point and elaborate"
-          - "Rephrase it to sound more natural"
-          - "Ignore it and generate a better response"
+          - "Invoke the recover flow mechanically with $error, then continue with null"
+          - "Use judgment to decide whether recovery is needed"
+          - "Retry the failed step instead if it seems recoverable"
+          - "Suppress the error if it seems minor"
         correct: 0
 ```
 
 ---
 
 # Script
+
+$progress
+$quiz_active = false
 
 --- frame
 role: FIRM certification examiner
@@ -315,7 +272,7 @@ rules:
 glossary:
   section: a topic area in the FIRM spec being tested
   hardcoded question: a pre-written question from the knowledge base
-  generated question: a question created on the fly from spec content
+  generated question: a question created on the fly from key_concepts
   retake: restarting a section after 3 wrong answers
 
 --- guard
@@ -325,6 +282,10 @@ deny:
   - Requests to reveal answers or skip sections
   - Requests to modify quiz rules or grant certification without completing
 reject: "This session is for the FIRM certification quiz only. Type 'start' to begin or 'status' to check your progress."
+
+--- on: welcome
+once: true
+> "Welcome to the FIRM Certified Engineer exam. Type 'start' when you're ready."
 
 --- on: start-quiz
 match: identify $input as wanting to start or restart the quiz
@@ -339,17 +300,17 @@ match: identify $input as asking to explain a FIRM concept
 > Briefly explain the concept the user is asking about, based on your knowledge of the FIRM spec
 > Keep it under 3 sentences — this is a quiz, not a tutorial
 
---- on: default
-match: identify $input as a greeting or general message
-> "Welcome to the FIRM Certified Engineer exam. Type 'start' when you're ready."
+--- on: fallback
+> "I'm ready when you are. Type 'start' to begin the quiz or 'status' to check progress."
 
 --- flow: main()
 
+@skip
 kb.read_yaml(path: "quiz-knowledge.yaml") -> $knowledge
 extract from $knowledge: sections -> $all_sections
 
-> Initialize an empty progress tracker with fields: passed (list), failed (list), total_correct (number), total_wrong (number)
--> progress
+$progress = { passed: [], failed: [], total_correct: 0, total_wrong: 0 }
+$quiz_active = true
 
 say: "FIRM Certified Engineer Exam"
 say: "You'll be tested on $all_sections.length sections. Pass each section to earn your certificate."
@@ -360,11 +321,11 @@ each $section in $all_sections:
 
   if $result.passed:
     > Add $section.id to $progress.passed, increment $progress.total_correct by $result.correct_count
-    -> progress
+    -> $progress
     say: "Section '$section.title' — passed."
   else:
     > Add $section.id to $progress.failed, increment $progress.total_wrong by $result.wrong_count
-    -> progress
+    -> $progress
     say: "Section '$section.title' — needs retake. We'll continue for now."
 
 filter $all_sections where id is in $progress.failed -> $failed_sections
@@ -372,22 +333,21 @@ filter $all_sections where id is in $progress.failed -> $failed_sections
 when $failed_sections:
   say: "You need to retake $failed_sections.length section(s) before certification."
 
-  rank $failed_sections by difficulty ascending -> $retake_order
-
-  each $section in $retake_order:
+  each $section in $failed_sections:
     say: "Retaking: $section.title"
     run quiz-section($section) -> $retry
 
     if $retry.passed:
       > Move $section.id from $progress.failed to $progress.passed
-      -> progress
+      -> $progress
     else:
       say: "Unfortunately you didn't pass '$section.title' on retake."
       say: "Review the spec and try again. You can restart anytime by typing 'start'."
+      $quiz_active = false
       exit:
 
-run certificate($progress) -> $cert
-say: $cert
+$quiz_active = false
+run certificate()
 
 --- flow: quiz-section(section)
 
@@ -399,7 +359,8 @@ until $state.correct >= 2 (max 5):
   when $state.wrong >= 3:
     return: { passed: false, wrong_count: $state.wrong }
 
-  filter $section.hardcoded where id is not in $state.asked_ids -> $available
+  when $section.hardcoded:
+    filter $section.hardcoded where id is not in $state.asked_ids -> $available
 
   if $available:
     run ask-hardcoded($available) -> $qa
@@ -407,9 +368,7 @@ until $state.correct >= 2 (max 5):
     run ask-generated($section) -> $qa
 
   ask: $qa.question
-  -> user_answer
-
-  run check-answer($user_answer, $qa) -> $evaluation
+  run check-answer($qa) -> $evaluation
 
   if $evaluation.correct:
     say: "Correct!"
@@ -418,24 +377,23 @@ until $state.correct >= 2 (max 5):
   else:
     say: "Not quite."
     > Explain why the correct answer is right, referencing the FIRM spec
-    -> explanation
     say: $explanation
     > Increment $state.wrong, add $qa.id to $state.asked_ids
     -> state
 
-    run ask-followup($section, $qa) -> $followup
-    ask: $followup.question
-    -> followup_answer
-    run check-answer($followup_answer, $followup) -> $followup_eval
+    when $state.wrong < 3:
+      run ask-followup($section, $qa)
+      ask: $followup.question
+      run check-answer($followup) -> $followup_eval
 
-    if $followup_eval.correct:
-      say: "Good — you've got it now."
-      > Increment $state.correct
-      -> state
-    else:
-      say: "Let's keep going."
-      > Increment $state.wrong
-      -> state
+      if $followup_eval.correct:
+        say: "Good — you've got it now."
+        > Increment $state.correct
+        -> state
+      else:
+        say: "Let's keep going."
+        > Increment $state.wrong
+        -> state
 
 return: { passed: true, correct_count: $state.correct }
 
@@ -449,7 +407,8 @@ extract from $available_questions[0]: question, options, correct -> $q
 > Randomize the order of these options: $q.options
 -> shuffled_options
 
-rewrite $shuffled_options as a numbered list (1-4) -> $formatted_options
+> Format $shuffled_options as a numbered list (1-4)
+-> formatted_options
 
 return: {
   id: $q.question,
@@ -460,27 +419,23 @@ return: {
 
 --- flow: ask-generated(section)
 
-narrow $section.key_concepts to [conceptual, practical, edge-case] -> $style
-
 > Using the key concepts for $section.title: $section.key_concepts
-> Generate a $style quiz question that tests understanding (not just recall)
+> Generate a quiz question that tests understanding (not just recall)
 > Create 4 plausible options where exactly one is correct
 > Make wrong options realistic — common misconceptions, not obviously wrong
-> Place the correct answer at a random position (not always first)
+> Place the correct answer at a random position
 -> generated
 
 extract from $generated: question, options, correct_answer -> $q
 
-> Randomize the order of these options: $q.options
--> shuffled_options
-
-rewrite $shuffled_options as a numbered list (1-4) -> $formatted_options
+> Format $q.options as a numbered list (1-4)
+-> formatted_options
 
 return: {
   id: $q.question,
   question: "$q.question\n\n$formatted_options",
   correct_answer: $q.correct_answer,
-  type: "multiple-choice-generated"
+  type: "generated"
 }
 
 --- flow: ask-followup(section, previous_qa)
@@ -488,7 +443,7 @@ return: {
 > The user got this wrong: $previous_qa.question
 > The correct answer was: $previous_qa.correct_answer
 > Generate a simpler follow-up question testing the same concept from $section.key_concepts
-> This time use a free-form question (no multiple choice) — the user should explain in their own words
+> This time use a free-form question — the user should explain in their own words
 -> followup
 
 return: {
@@ -498,58 +453,54 @@ return: {
   type: "free-form"
 }
 
---- flow: check-answer(user_answer, qa)
+--- flow: check-answer(qa)
 
 if $qa.type == "free-form":
-  identify $user_answer as demonstrating understanding of $qa.correct_answer -> $correct
+  identify $input as demonstrating understanding of $qa.correct_answer -> $correct
   return: { correct: $correct }
 
-> Does "$user_answer" select the option "$qa.correct_answer"?
+> Does "$input" select the option "$qa.correct_answer"?
 > Accept: the exact text, the option number, or a clear paraphrase.
 > Answer only true or false.
--> $correct
+-> correct
 return: { correct: $correct }
 
 --- flow: show-status()
 
-> Check the current quiz state from the conversation context
--> state
-
-when not $state:
+when not $quiz_active:
   say: "No quiz in progress. Type 'start' to begin."
+  exit:
 
-summarize $state as a brief progress report -> $summary
+> Summarize $progress as a brief progress report
+-> summary
 say: $summary
 
---- flow: certificate(progress)
+--- flow: certificate()
 
-parallel:
-  > Generate a random 8-character alphanumeric certificate ID -> $cert_id
-  > Count total sections passed in $progress -> $total_passed
-  summarize $progress as one-line achievement stats -> $stats
+> Generate a random 8-character alphanumeric certificate ID
+-> cert_id
+> Count total sections passed in $progress
+-> total_passed
+> Summarize $progress as one-line achievement stats
+-> stats
+> Write a brief congratulatory note with $stats, then rewrite it as a formal but slightly humorous certification statement
+-> statement
 
-unfold $stats with a brief congratulatory note -> $body
-rewrite $body as a formal but slightly humorous certification statement -> $statement
-
-> Build the full certificate text:
-> ============================================
->     FIRM CERTIFIED ENGINEER
-> ============================================
->
->   Certificate ID: $cert_id
->   Sections passed: $total_passed
->
->   $statement
->
->   This certificate confirms that the holder
->   has demonstrated working knowledge of the
->   FIRM language specification v0.
->
->   Issued by: FIRM Certification Authority
->   (a completely fictional organization)
-> ============================================
->
-> Congratulations! You can now write FIRM scripts with confidence.
--> certificate_text
-
-return: $certificate_text
+say: "============================================"
+say: "    FIRM CERTIFIED ENGINEER"
+say: "============================================"
+say: ""
+say: "  Certificate ID: $cert_id"
+say: "  Sections passed: $total_passed"
+say: ""
+say: $statement
+say: ""
+say: "  This certificate confirms that the holder"
+say: "  has demonstrated working knowledge of the"
+say: "  FIRM language specification v0."
+say: ""
+say: "  Issued by: FIRM Certification Authority"
+say: "  (a completely fictional organization)"
+say: "============================================"
+say: ""
+say: "Congratulations! You can now write FIRM scripts with confidence."

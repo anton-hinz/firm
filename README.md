@@ -136,17 +136,7 @@ This is a contract with an MCP server: which server, which tools are available, 
 | `filter` | Keep matching items | `filter $list where status is open -> $open` |
 | `rank` | Sort by criterion | `rank $items by urgency -> $sorted` |
 
-### Output — shaping the response
-
-| Operator | What it does | Example |
-|----------|-------------|---------|
-| `summarize` | Compress | `summarize $report in 3 sentences -> $brief` |
-| `unfold` | Expand | `unfold $outline with examples -> $detailed` |
-| `rewrite` | Reformat | `rewrite $draft as formal email -> $email` |
-
-### When to use an operator vs `>`
-
-Operators are for **routine transformations** (classify, compress, expand, filter). `>` is for **judgment calls** (assess risks, design a solution, write original content).
+Operators are for **routine structured transformations** (classify, extract, filter, rank). Use `>` for everything else — judgment calls, content generation, formatting.
 
 ## Control flow
 
@@ -208,7 +198,7 @@ narrow $text to [bug, feature, question] -> $category
 return: $category
 ```
 
-`say:` — response to the user (entry-point flow). `return:` — data to the calling flow (sub-flow).
+`say:` — output to the user (may be used multiple times). `return:` — data to the calling flow (sub-flow).
 
 ## Quotes rule
 

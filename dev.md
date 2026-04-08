@@ -25,9 +25,12 @@ The runtime is the LLM. The interpreter is attention. The context window is the 
 
 ## 1. Structure
 
-A FIRM script consists of **sections** separated by `---`:
+A FIRM script consists of **global variables** (optional) followed by **sections** separated by `---`:
 
 ```
+$language = "en"
+$state
+
 --- frame
 ...
 
@@ -43,6 +46,8 @@ A FIRM script consists of **sections** separated by `---`:
 --- flow: name
 ...
 ```
+
+Global variables are declared before any section. See §6.5 for details.
 
 Five section types:
 - `frame` — interpretation context
@@ -86,7 +91,7 @@ Frames are cumulative: multiple `--- frame` sections merge. Later rules override
 
 ## 3. Guard
 
-A guard defines the input scope — what the agent will engage with and what it will reject. Evaluated **before** triggers and flows. If the input is out of scope, the rejection fires and nothing else executes.
+A guard defines the input scope — what the agent will engage with and what it will reject. Evaluated **on every user message**, including responses to `ask:`. If the input is out of scope, the rejection fires and the flow continues waiting for valid input.
 
 ```
 --- guard
@@ -148,7 +153,7 @@ If no `--- guard` section is present, the agent accepts all input. The guard is 
 
 A `tools` section declares an external MCP server and the contract for using it.
 
-### 3.1 Declaring tools
+### 4.1 Declaring tools
 
 ```
 --- tools: github
@@ -172,7 +177,7 @@ A `tools` section declares an external MCP server and the contract for using it.
 - `deny:` — blacklist (alternative to `allow`). Cannot combine with `allow`.
 - `rules:` — constraints on how these tools may be used (interpreted by the LLM)
 
-### 3.2 Using tools in flows
+### 4.2 Using tools in flows
 
 Call tools with `server.tool(params)`:
 
@@ -186,18 +191,18 @@ Parameters are named. Variables expand inside values.
 
 Without `->`, the tool runs for side-effect only (e.g. sending a message).
 
-### 3.3 Error handling
+### 4.3 Error handling
 
-Tool calls can fail. Failures are handled by the current error handler (see §6.13 Error handling).
+Tool calls can fail. Failures are handled by the current error handler (see §6.11 Error handling).
 
 ```
 @say: "Failed to create issue: $error"
-github.create_issue(title: $title, body: $body) -> $result
+github.create_issue(title: $title, body: $body) -> $issue
 
-say: "Created: $result.url"
+say: "Created: $issue.url"
 ```
 
-### 3.4 Constraining tools per flow
+### 4.4 Constraining tools per flow
 
 A flow can declare which tools it uses — documentation + safety:
 
@@ -227,11 +232,13 @@ run support($input)
 
 ```
 --- on: trigger-name
-match: condition            # when to fire
+match: condition            # when to fire (optional)
 run flow_name($input)      # what to run
 ```
 
 `match:` is a natural-language condition evaluated by the LLM against each user message. `$input` is always the current user message.
+
+Without `match:`, the trigger is **unconditional** — it fires on every message. Use as a catch-all (last in order) or as the sole trigger for formal scenarios where the agent is fully flow-driven.
 
 ### Match conditions
 
@@ -275,7 +282,7 @@ match: $input is a question
 run answer($input)
 ```
 
-If no trigger matches, the agent responds normally (no flow is invoked).
+If no trigger matches, the agent responds freely within the frame and guard context — no flow is invoked.
 
 ### Inline triggers
 
@@ -285,6 +292,25 @@ For simple reactions that don't need a separate flow:
 --- on: greeting
 match: $input is a greeting
 > Respond warmly, use the user's name if available
+```
+
+### One-time triggers
+
+`once:` makes a trigger fire only once per session. After firing, it is skipped on subsequent messages.
+
+```
+--- on: welcome
+once: true
+> Greet the user and explain what you can help with
+```
+
+Useful for greetings, onboarding prompts, or any first-message logic. Combine with `match:` for conditional one-time triggers:
+
+```
+--- on: first-bug
+once: true
+match: $input mentions bug or error
+> Explain the bug reporting process, then run handle-bug($input)
 ```
 
 ---
@@ -392,6 +418,51 @@ Without `->`, the result is discarded (side-effect only).
 - `$name` — reference a captured value
 - `$name.field` — access a property
 - `$name[0]` — index into a list
+
+#### Global variables
+
+Declared outside `---` sections, before any section:
+
+```
+$language = "en"
+$attempt_count = 0
+$session
+```
+
+Without initialization, the value is `null`. Only simple values: strings, numbers, booleans. Global variables are readable and writable from any flow.
+
+#### Scoping
+
+Variables are scoped. A `->` writes to the first matching name found: local scope first, then global. If not found, a new local variable is created.
+
+- **Flow variables** are local to the flow. Not visible to sub-flows or parent flows.
+- **Global variables** are visible everywhere. Any flow can read and write them.
+- **Sub-flow isolation:** a sub-flow receives arguments explicitly via `run flow($arg)` and returns via `return:`. It cannot see the calling flow's local variables — only its own locals and globals.
+
+```
+$state = "idle"
+
+--- flow: main(input)
+> Process $input
+-> result           # local to main
+$state = "done"     # writes to global
+run log($result)    # $result passed explicitly
+say: $result
+
+--- flow: log(data)
+> Format $data for logging -> $formatted   # local to log
+$state = "logged"                          # writes to global
+# $result is NOT accessible here
+```
+
+#### Reserved variables
+
+Two variables are managed by the runtime. They always exist, cannot be declared by the user, and have automatic lifecycle:
+
+- **`$input`** — the current user input. Set on each user message (triggers, entry flow) and overwritten by `ask:`. Cleared after the flow or handler completes.
+- **`$error`** — the current error. Set when an error is raised. Cleared after the handler completes. `null` between errors.
+
+These follow normal scoping for reads — any flow can reference `$input` and `$error`. But their values are managed by the runtime, not by `->` or `=`.
 
 ### 6.6 Conditions
 
@@ -506,7 +577,7 @@ Everything else inside parentheses is free-form interpretation. `("high" | "medi
 
 ##### Required fields
 
-`!` after a field name marks it as required. If any required field is `null` after extraction, an error is raised and handled by the current error handler (see §6.13 Error handling). `$error` contains the list of missing fields.
+`!` after a field name marks it as required. If any required field is `null` after extraction, an error is raised and handled by the current error handler (see §6.11 Error handling). `$error` contains the list of missing fields.
 
 ```
 @say: "Missing required fields: $error"
@@ -550,71 +621,7 @@ when $is_support:
   run route($type, $details)
 ```
 
-### 6.8 Output operators
-
-Built-in verbs for shaping how content is presented.
-
-#### `summarize`
-
-Compress content.
-
-```
-summarize $report -> $brief
-summarize $report in 3 sentences -> $brief
-summarize $findings as bullet points -> $bullets
-```
-
-#### `unfold`
-
-Expand, elaborate, add detail.
-
-```
-unfold $outline -> $detailed
-unfold $outline with examples -> $rich
-unfold $bullet_points with reasoning and evidence -> $essay
-```
-
-#### `rewrite`
-
-Change form, format, tone, or audience — without changing meaning.
-
-```
-rewrite $draft as formal email -> $email
-rewrite $technical for non-technical audience -> $simple
-rewrite $notes as step-by-step guide -> $guide
-rewrite $response in Spanish -> $translated
-```
-
-#### Chaining output operators
-
-```
-extract from $input: topic, audience, depth -> $req
-> Research $req.topic thoroughly
--> raw
-
-if $req.depth is brief:
-  summarize $raw in 3 sentences -> $content
-else:
-  unfold $raw with examples -> $content
-
-rewrite $content for $req.audience -> $final
-say: $final
-```
-
-#### Output operators vs `>` instructions
-
-Use operators when the transformation is **purely structural** — changing length, format, or style. Use `>` when the instruction involves **judgment, creation, or domain logic**:
-
-```
-# Operator — reshaping existing content
-summarize $report -> $brief
-
-# Instruction — requires judgment
-> Evaluate $report and highlight the 3 most critical risks
--> risks
-```
-
-### 6.9 Loops
+### 6.8 Loops
 
 #### `each` — iteration over a list
 
@@ -625,6 +632,8 @@ each $item in $list:
 ```
 
 `$results[]` appends to a list.
+
+If a step inside `each` raises an error and the handler is `@skip`, the current iteration produces null and the loop continues with the next item.
 
 #### `until` — loop until condition
 
@@ -640,8 +649,7 @@ Basic form:
 ```
 until $data.email and $data.name:
   ask: "I still need your {missing fields}. Can you provide them?"
-  -> answer
-  extract from $answer: name, email -> $new
+  extract from $input: name, email -> $new
   > Merge $new into $data, keep existing non-null values
   -> data
 ```
@@ -657,17 +665,17 @@ If max is reached without the condition being met, the loop exits. The flow cont
 
 **`$x is complete`** — soft check meaning "all expected fields are non-null." The LLM evaluates this against the structure's shape.
 
-### 6.10 Control
+### 6.9 Control
 
-- `say: $value` — send output to the user and end the flow
+- `say: $value` — send output to the user (flow continues)
 - `return: $value` — pass result to the calling flow (used in sub-flows invoked via `run`)
 - `exit:` — halt execution (no output)
 - `exit: "reason"` — halt with explanation
-- `ask: "question"` — pause and request input from user
+- `ask: "question"` — pause, request user input, and overwrite `$input` with the response. The flow holds context — triggers do not re-evaluate during an active flow. Guard still evaluates every message; out-of-scope responses are rejected and the flow continues waiting.
 
-A flow that ends without `say` or `return` is a **void flow** — its purpose is side effects (tool calls, `ask`, state mutations). If invoked via `run flow() -> $result`, `$result` is `null`.
+A flow ends when it reaches the last step, or `exit:`, or `return:`. `say:` does not terminate — a flow may `say:` multiple times. A flow that ends without `return` is a **void flow** — its purpose is side effects (tool calls, `ask`, `say:`, state mutations). If invoked via `run flow() -> $result`, `$result` is `null`.
 
-### 6.11 Running other flows
+### 6.10 Running other flows
 
 ```
 run summarize($chunk) -> $summary
@@ -675,20 +683,7 @@ run summarize($chunk) -> $summary
 
 Invokes another flow defined in the same script.
 
-### 6.12 Parallel execution
-
-```
-parallel:
-  > Research competitor A -> $a
-  > Research competitor B -> $b
-
-> Compare $a and $b
--> comparison
-```
-
-Steps inside `parallel:` have no data dependencies and can execute concurrently.
-
-### 6.13 Error handling
+### 6.11 Error handling
 
 FIRM uses a single mutable error handler. When an error occurs (tool failure, required field missing, explicit `raise`), the current handler decides what happens. Each `@handler` directive replaces the previous one — no stacking, no rethrowing.
 
@@ -702,7 +697,7 @@ FIRM uses a single mutable error handler. When an error occurs (tool failure, re
 
 Default (no explicit handler): `@skip`.
 
-`$error` is always set when an error occurs, regardless of handler. It contains the error description.
+`$error` is set when an error occurs and cleared after the handler completes (see §6.5 Variables — `$error` lifecycle).
 
 #### Example
 
@@ -724,11 +719,10 @@ extract from $input: phone, company -> $extra
 
 say: $plan
 
---- flow: notify_failure(error)
-slack.send_message(channel: "#ops", text: "CRM error: $error")
+--- flow: notify_failure(message)
+slack.send_message(channel: "#ops", text: "CRM error: $message")
 ask: "CRM failed. Retry manually or skip?"
--> answer
-when $answer is skip:
+when $input is skip:
   exit:
 ```
 
@@ -750,7 +744,7 @@ when $data.score > 100:
 - Explicit `raise` / `raise: "reason"`
 - Constraint violations in `extract` field hints
 
-Operators (`identify`, `narrow`, `rank`, `filter`, `summarize`, `unfold`, `rewrite`) and `>` instructions do not implicitly raise — they always produce a result (which may be empty or imprecise). Use explicit `raise` after validation if needed.
+Operators (`identify`, `narrow`, `rank`, `filter`) and `>` instructions do not implicitly raise — they always produce a result (which may be empty or imprecise). Use explicit `raise` after validation if needed.
 
 ---
 
@@ -776,9 +770,12 @@ role: Financial advisor
 
 ### 7.2 Multi-flow scripts
 
-A script can define multiple flows. The first `flow` without explicit invocation is the entry point.
+A script can define multiple flows. Flows are only invoked explicitly — via triggers (`run`) or from other flows (`run`). There is no implicit entry point.
 
 ```
+--- on: incoming
+run main($input)
+
 --- flow: main(input)
 run classify($input) -> $type
 run handle($input, $type) -> $result
@@ -834,7 +831,6 @@ return: $score
 | `is` in conditions | Soft matching requires judgment |
 | `match:` in triggers | Evaluating semantic conditions |
 | Input operators (`identify`, `narrow`, `extract`, `filter`, `rank`) | Classification requires judgment |
-| Output operators (`summarize`, `unfold`, `rewrite`) | Reshaping requires judgment |
 | `ask:` without quotes | Phrasing a question requires judgment |
 | `say:` without quotes | Generating a response requires judgment |
 | `exit:` without quotes | Formulating a reason requires judgment |
@@ -856,7 +852,6 @@ return: $score
 | `raise` | Trigger the current error handler. Do not suppress or reinterpret. |
 | `say:` with quotes | Output the literal text. Do not add greetings, sign-offs, or commentary. |
 | `exit:` with quotes | Halt with the literal reason. Do not soften or elaborate. |
-| `parallel:` | Execute the block. Do not reorder or serialize based on preference. |
 
 ### The principle
 
@@ -888,7 +883,7 @@ When the user describes agent behavior in free form, generate a complete `.firm`
 
 **Rules:**
 - Only use constructs from the spec. Do not invent syntax.
-- Prefer operators over `>` when the operation matches an operator's purpose.
+- Prefer input operators over `>` when the operation matches an operator's purpose.
 - `say:` for user-facing output, `return:` for sub-flow results.
 - Apply the quotes rule consistently.
 - Minimal — don't add what the user didn't ask for.
@@ -908,10 +903,10 @@ When the user asks to check, review, lint, or test a `.firm` script.
 - Undefined variables, `say:`/`return:` confusion, missing flows/tools, circular `run`, `until` without termination
 
 **Warnings** — should fix:
-- `>` where an operator fits, `each`+`when` where `filter` works, missing `(max N)` on `until`, trigger shadowing, missing tool error handling, guard without `reject:`, guard `scope:` too vague to evaluate
+- `>` where an input operator fits, `each`+`when` where `filter` works, missing `(max N)` on `until`, trigger shadowing, missing error handler before tool calls, guard without `reject:`, guard `scope:` too vague to evaluate
 
 **Efficiency** — could improve:
-- Combinable `>` instructions, redundant operators, single-use sub-flows, single-step `parallel:`
+- Combinable `>` instructions, single-use sub-flows
 
 **Style** — consider:
 - Missing comments on non-obvious logic, inconsistent naming, vague frame rules
