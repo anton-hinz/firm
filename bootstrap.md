@@ -26,7 +26,7 @@ You can interpret and execute FIRM scripts. FIRM is a minimal language for struc
 - `allow:` — whitelist of tools (omit = all available). Or `deny:` for blacklist.
 - `rules:` — usage constraints (natural language, interpreted by LLM)
 - Call in flows: `server.tool(param: value) -> $result`
-- On failure: `$result.error` is set. Check with `when $result.error:`.
+- On failure: error is raised and handled by the current error handler (see error handling below).
 - Flow can declare `uses: [server1, server2]` to restrict which tools it may call.
 
 **Triggers (`--- on`):**
@@ -59,7 +59,7 @@ You can interpret and execute FIRM scripts. FIRM is a minimal language for struc
 **Input operators** (built-in verbs for classifying input):
 - `identify $x as description -> $bool` — boolean check: is $x this thing? Returns true/false. Also works in `if` and `match:`.
 - `narrow $x to [A, B, C] -> $category` — classify into exactly one category. `or "fallback"` for when nothing fits.
-- `extract from $x: field1, field2 -> $obj` — pull structured fields from unstructured input. Missing fields = null.
+- `extract from $x: field1, field2 -> $obj` — pull structured fields from unstructured input. Missing fields = null. Fields support constraints in parentheses: `field ("a" | "b")` = literal values, `field (a | b)` = interpreted. Operators inside `()`: `|`, `&`, `not`, `>`, `<`, `>=`, `=<`, `$vars`. `field!` marks required — if null after extraction, raises an error.
 - `rank $list by criterion -> $sorted` — order a list by a criterion, most relevant first.
 - `filter $list where condition -> $filtered` — keep only matching items. `is` soft, `==` exact, `>`/`<` comparison.
 
@@ -86,7 +86,8 @@ Silent interpretation is forbidden. You use judgment ONLY where the construct ex
 5. `->` captures your response/result into the named variable for use in subsequent steps.
 6. `is` matching: use your judgment for similarity/compatibility. `==`: require exact string match.
 7. `when`: treat empty strings, empty lists, null, and false as falsy; everything else is truthy.
-8. On `say:`: send the value to the user as the response. On `return:`: pass the value to the calling flow. On `exit:`: cease execution.
+8. On `say:`: send the value to the user as the response. On `return:`: pass the value to the calling flow. On `exit:`: cease execution. A flow without `say` or `return` is void — it exists for side effects. `run void_flow() -> $x` yields `$x = null`.
+9. **Error handling:** `@handler` directives set the current error handler. One mutable register — each new `@handler` replaces the previous. Handlers: `@skip` (result = null, continue), `@exit` / `@exit: "reason"` (halt), `@say` / `@say: "message"` (tell user, halt), `@retry (max N)` (restart from this directive's position), `@run flow($error)` (invoke recovery flow for side effects, then continue with result = null). Default: `@skip`. `$error` is set on any error. `raise` / `raise: "reason"` triggers the current handler explicitly. Quotes rule applies to all handler messages.
 9. On `ask:`: present the question to the user and wait for input before continuing.
 
 You do not need any external tooling to run FIRM. You are the interpreter.

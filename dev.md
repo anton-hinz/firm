@@ -188,13 +188,11 @@ Without `->`, the tool runs for side-effect only (e.g. sending a message).
 
 ### 3.3 Error handling
 
-Tool calls can fail. The result contains an `error` field on failure:
+Tool calls can fail. Failures are handled by the current error handler (see §6.13 Error handling).
 
 ```
+@say: "Failed to create issue: $error"
 github.create_issue(title: $title, body: $body) -> $result
-
-when $result.error:
-  say: "Failed to create issue: $result.error"
 
 say: "Created: $result.url"
 ```
@@ -480,6 +478,43 @@ Short form for a single field:
 extract language from $input -> $lang
 ```
 
+##### Field constraints
+
+Fields may include **constraints** in parentheses. The quotes rule applies inside constraints:
+
+```
+extract from $input:
+  severity! ("high" | "medium" | "low"),
+  component!,
+  steps-to-reproduce (list),
+  priority (number >= 1 & number =< 10),
+  tone (not aggressive),
+  user-id ($valid_pattern & alphanumeric)
+-> $details
+```
+
+Inside parentheses:
+- `"quoted"` — literal values, exact match
+- unquoted — interpreted by the LLM (e.g. `list`, `alphanumeric`, `aggressive`)
+- `|` — OR: any of the options
+- `&` — AND: all conditions must hold
+- `not` — negation
+- `>`, `<`, `>=`, `=<` — comparison operators
+- `$variables` — expand as usual
+
+Everything else inside parentheses is free-form interpretation. `("high" | "medium" | "low")` means exactly one of three strings. `(high | medium | low)` means the LLM judges which label best fits.
+
+##### Required fields
+
+`!` after a field name marks it as required. If any required field is `null` after extraction, an error is raised and handled by the current error handler (see §6.13 Error handling). `$error` contains the list of missing fields.
+
+```
+@say: "Missing required fields: $error"
+extract from $input: name!, email!, phone -> $contact
+```
+
+Without `!`, missing fields are `null` — no error raised.
+
 #### `rank`
 
 Order a list by a criterion.
@@ -630,6 +665,8 @@ If max is reached without the condition being met, the loop exits. The flow cont
 - `exit: "reason"` — halt with explanation
 - `ask: "question"` — pause and request input from user
 
+A flow that ends without `say` or `return` is a **void flow** — its purpose is side effects (tool calls, `ask`, state mutations). If invoked via `run flow() -> $result`, `$result` is `null`.
+
 ### 6.11 Running other flows
 
 ```
@@ -650,6 +687,70 @@ parallel:
 ```
 
 Steps inside `parallel:` have no data dependencies and can execute concurrently.
+
+### 6.13 Error handling
+
+FIRM uses a single mutable error handler. When an error occurs (tool failure, required field missing, explicit `raise`), the current handler decides what happens. Each `@handler` directive replaces the previous one — no stacking, no rethrowing.
+
+#### Handlers
+
+- `@skip` — set `$error`, result = null, continue to next step
+- `@exit` / `@exit: "reason"` — halt execution. Quotes rule applies.
+- `@say` / `@say: "message"` — send message to user and halt. Quotes rule applies.
+- `@retry (max N)` — on error, restart from this point. After N failures, the flow exits.
+- `@run flow_name($error)` — invoke a flow for custom recovery. The handler flow runs for side effects only (return value is ignored). After the handler flow completes, the main flow continues with result = null.
+
+Default (no explicit handler): `@skip`.
+
+`$error` is always set when an error occurs, regardless of handler. It contains the error description.
+
+#### Example
+
+```
+--- flow: onboard(input)
+
+@retry (max 2)
+extract from $input: name!, email!, role -> $contact
+
+@run notify_failure($error)
+crm.create_lead(name: $contact.name, email: $contact.email) -> $lead
+
+@skip
+extract from $input: phone, company -> $extra
+
+@exit: "Failed to generate plan"
+> Generate onboarding plan for $contact
+-> plan
+
+say: $plan
+
+--- flow: notify_failure(error)
+slack.send_message(channel: "#ops", text: "CRM error: $error")
+ask: "CRM failed. Retry manually or skip?"
+-> answer
+when $answer is skip:
+  exit:
+```
+
+Reading top to bottom: extract is critical — retry from that point on failure. CRM call — run a recovery flow that notifies ops and asks the user. Extra fields — skip if missing. Plan generation — exit on failure.
+
+#### Explicit raise
+
+`raise` / `raise: "reason"` triggers the current handler manually:
+
+```
+when $data.score > 100:
+  raise: "Score out of range: $data.score"
+```
+
+#### What raises errors
+
+- Tool call failures (MCP server error, timeout, denied tool)
+- `extract` with required fields (`!`) where a field is null
+- Explicit `raise` / `raise: "reason"`
+- Constraint violations in `extract` field hints
+
+Operators (`identify`, `narrow`, `rank`, `filter`, `summarize`, `unfold`, `rewrite`) and `>` instructions do not implicitly raise — they always produce a result (which may be empty or imprecise). Use explicit `raise` after validation if needed.
 
 ---
 
@@ -751,6 +852,8 @@ return: $score
 | `each` / `until` | Iterate mechanically. Do not skip, reorder, or editorialize. |
 | `run` | Invoke the flow with the given arguments. Do not add context. |
 | `return:` | Pass the value to the caller. Do not wrap, format, or append. |
+| `@handler` | Set the current error handler. Mechanical register replacement. |
+| `raise` | Trigger the current error handler. Do not suppress or reinterpret. |
 | `say:` with quotes | Output the literal text. Do not add greetings, sign-offs, or commentary. |
 | `exit:` with quotes | Halt with the literal reason. Do not soften or elaborate. |
 | `parallel:` | Execute the block. Do not reorder or serialize based on preference. |
