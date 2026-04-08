@@ -395,12 +395,6 @@ A quoted `>` emits literal text (with variable expansion):
 > "$name, your request has been logged."
 ```
 
-**Pipes** chain transformations within one instruction:
-
-```
-> Extract entities from $text | Classify by type | Sort by relevance
--> entities
-```
 
 ### 6.4 Output capture
 
@@ -585,6 +579,14 @@ extract from $input: name!, email!, phone -> $contact
 ```
 
 Without `!`, missing fields are `null` — no error raised.
+
+##### Constraint violations
+
+If a value does not satisfy its constraint, the behavior depends on quotes:
+- **Quoted constraint** (`("high" | "medium" | "low")`) — the value must be one of the exact strings. If not, an error is raised. There is no coercion — `"critical"` does not map to `"high"`.
+- **Unquoted constraint** (`(high | medium | low)`) — the LLM uses judgment to map the value. `"critical"` may be interpreted as `high`. This is Tier 2 behavior.
+
+Constraint violations on non-required fields: value is set to `null`, no error raised. On required fields (`!`): error is raised.
 
 #### `rank`
 
@@ -857,6 +859,27 @@ return: $score
 
 **Silent interpretation is forbidden.** If the script does not ask the LLM to interpret, the LLM does not interpret. No unsolicited additions, no implicit reformatting, no creative fills. The script is the authority.
 
+### Conformance tiers
+
+FIRM constructs fall into two tiers for conformance testing:
+
+**Tier 1 — Mechanical (must be 100%).** These constructs have deterministic behavior. Any LLM claiming FIRM support must execute them correctly every time:
+- `->` capture, `$` substitution, `==` comparison, quoted text
+- `if`/`elif`/`else`, `when`, `each`, `until`
+- `run`, `return:`, `exit:`, `say:` (with quotes)
+- `@handler`, `raise`, `$error` lifecycle
+- Variable scoping (local vs global, sub-flow isolation, reserved variables)
+- Guard evaluation, trigger ordering, `once:`
+- `ask:` overwrites `$input`, flow holds context
+
+**Tier 2 — Interpretation (scored as percentage).** These constructs depend on LLM judgment. Quality varies by model:
+- `>` without quotes, `is` matching, `match:` conditions
+- `identify`, `narrow`, `extract`, `filter`, `rank`
+- Unquoted `say:`, `ask:`, `exit:`
+- Extract field constraints (interpreted hints)
+
+A model with 100% Tier 1 and low Tier 2 is a valid but weak FIRM runtime. A model with <100% Tier 1 is not a conformant FIRM runtime.
+
 ---
 
 ## 11. Design principles
@@ -920,15 +943,40 @@ Test scenario format:
 ```
 --- test: test-name
 description: what this test verifies
-
+tags: [category, ...]
+script: |
+  ... FIRM script to load ...
 steps:
   - input: "user message"
-  - assert: condition to verify
+    expect: "exact text"
+  - input: "next message"
+    expect: contains "substring"
 ```
 
-Assert conditions use FIRM matching: `is` (soft), `==` (exact), `exists`, `does not`, `length >`.
+**Expect modes:**
+- `expect: "exact text"` — output must match exactly
+- `expect: contains "text"` — output must contain substring
+- `expect: not contains "text"` — output must NOT contain substring
+- `expect: reject` — guard must reject the input
+- `expect: silent` — no output produced
+- `expect: any` — any output acceptable (for interpreted constructs)
 
-When `runs: N` specified, execute N times independently and report consistency.
+Multiple `expect:` on one step = all must hold.
+
+When `runs: N` specified on a step, execute N times independently. If results differ, mark FLAKY.
+
+### Phase 3: Conformance testing
+
+When the user asks to run conformance tests (`conformance.test.firm`), test how well the current LLM holds FIRM constructs.
+
+**Process:**
+1. Load the bootstrap
+2. For each `--- test:`: load its `script:`, simulate the `steps:` in order
+3. For multi-step tests: feed each `input:` sequentially, check each `expect:`
+4. For `runs: N`: repeat N times, flag inconsistency as FLAKY
+5. Report results
+
+**Tagging:** tests have `tags:` for filtering. Common tags: `mechanical`, `interpretation`, `capture`, `quotes`, `conditions`, `loops`, `error-handling`, `scoping`, `guard`, `triggers`, `ask`, `discipline`, `extract`, `operators`, `composition`.
 
 ### Output format
 
@@ -940,7 +988,34 @@ Dynamic: Tests: N | Pass: N | Fail: N | Flaky: N
 Overall: {pass / fail / needs review}
 ```
 
-Be specific (reference lines), suggest fixes, don't manufacture issues.
+For conformance tests:
+```
+## Conformance: {model name}
+
+Tier 1 (mechanical): N/M pass — {CONFORMANT / NOT CONFORMANT}
+Tier 2 (interpretation): N/M pass — {score}%
+
+Total: N | Pass: N | Fail: N | Flaky: N
+
+Failed:
+  - [T1] test-name: expected X, got Y
+  - [T2] test-name: expected X, got Y
+
+Flaky:
+  - test-name: inconsistent across N runs
+
+By category:
+  capture:     N/M
+  quotes:      N/M
+  conditions:  N/M
+  ...
+
+Overall: Tier 1 X%, Tier 2 Y%
+```
+
+Tier 1 must be 100% for a model to be a conformant FIRM runtime. Tier 2 scores interpretation quality — varies by model.
+
+Be specific (reference test names), suggest fixes, don't manufacture issues.
 
 ---
 

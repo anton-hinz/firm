@@ -110,7 +110,6 @@ sections:
       - ">" is a natural-language instruction to the LLM
       - -> captures the result into a variable
       - $name references a variable; .field and [0] for access
-      - pipes | chain transformations in one instruction
       - without -> the result is discarded (side-effect only)
       - a flow ends at its last step, return:, or exit: — not at say:
 
