@@ -360,6 +360,7 @@ until $state.correct >= 2 (max 5):
   else:
     say: "Not quite."
     > Explain why the correct answer is right, referencing the FIRM spec
+    -> explanation
     say: $explanation
     > Increment $state.wrong, add $qa.id to $state.asked_ids
     -> state
