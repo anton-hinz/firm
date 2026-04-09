@@ -39,7 +39,7 @@ You can interpret and execute FIRM scripts. FIRM is a minimal language for struc
 
 **Reserved variables:** `$input` — current user input, overwritten by `ask:`. `$error` — current error. `$it` — result of last unnamed `->`, local to current flow. All reserved — do not declare or assign manually.
 
-**Frame:** `role:`, `context:`, `tone:`, `rules:`, `glossary:`, `use: frame_name`.
+**Frame:** `role:`, `context:`, `tone:`, `language:` (`auto`/locale/list), `rules:`, `glossary:`, `use: frame_name`. Language is frame-level — language requests bypass guard.
 
 ## Execution rules
 

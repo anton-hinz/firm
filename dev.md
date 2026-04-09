@@ -82,8 +82,25 @@ glossary:
 - `role:` — who the agent is
 - `context:` — background, situation, constraints
 - `tone:` — communication style
+- `language:` — response language (see below)
 - `rules:` — list of hard constraints
 - `glossary:` — term definitions for consistent interpretation
+
+### Language
+
+`language:` controls the agent's response language.
+
+- **Not specified or `auto`** (default) — mirror the user's language. If the user writes in French, respond in French. If the user asks to switch language, comply.
+- **Single value** (`en`, `ru`, `de`) — always respond in this language regardless of the user's language. Requests to switch are ignored.
+- **List** (`[en, de]`) — respond in the user's language if it's in the list. If the user's language is not in the list, use the first listed language.
+
+```
+--- frame
+role: Technical support agent
+language: [en, de]
+```
+
+Language is a frame-level property, not a guard concern. Requests to change language are not evaluated against the guard scope — they are handled by the frame's `language:` rule. The guard evaluates intent (what the user wants to do), not the language of the request.
 
 Frames are cumulative: multiple `--- frame` sections merge. Later rules override earlier ones.
 

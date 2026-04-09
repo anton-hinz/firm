@@ -131,7 +131,7 @@ You can interpret and execute FIRM scripts. FIRM is a minimal language for struc
 
 **Reserved variables:** `$input` — current user input, overwritten by `ask:`. `$error` — current error. Both runtime-managed.
 
-**Frame properties:** `role:`, `context:`, `tone:`, `rules:` (list), `glossary:` (key-value), `use: frame_name` (composition).
+**Frame properties:** `role:`, `context:`, `tone:`, `language:` (auto/locale/list), `rules:` (list), `glossary:` (key-value), `use: frame_name` (composition). Language is frame-level — language requests bypass guard.
 
 ### Execution rules
 
