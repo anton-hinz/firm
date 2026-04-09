@@ -166,6 +166,70 @@ steps:
   - input: "go"
     expect: "unchanged"
 
+--- test: pipe-unnamed-capture-to-it
+description: -> without a name must write to $it
+tier: 1
+tags: [mechanical, capture, pipe]
+script: |
+  --- on: go
+  run test()
+  --- flow: test()
+  > "hello world" ->
+  say: $it
+steps:
+  - input: "go"
+    expect: "hello world"
+
+--- test: pipe-overwrites-it
+description: Each unnamed -> must overwrite $it
+tier: 1
+tags: [mechanical, capture, pipe]
+script: |
+  --- on: go
+  run test()
+  --- flow: test()
+  > "first" ->
+  > "second" ->
+  say: $it
+steps:
+  - input: "go"
+    expect: "second"
+
+--- test: pipe-chain-with-named-end
+description: Pipe chain ending with named capture must work
+tier: 1
+tags: [mechanical, capture, pipe]
+script: |
+  --- on: go
+  run test()
+  --- flow: test()
+  > "alpha" ->
+  > "$it-beta"
+  -> result
+  say: $result
+steps:
+  - input: "go"
+    expect: "alpha-beta"
+
+--- test: pipe-it-local-to-flow
+description: $it must not leak between flows
+tier: 1
+tags: [mechanical, capture, pipe]
+script: |
+  --- on: go
+  run test()
+  --- flow: test()
+  > "parent" ->
+  run child()
+  say: $it
+  --- flow: child()
+  > "child" ->
+  say: $it
+steps:
+  - input: "go"
+    expect: contains "child"
+    expect: contains "parent"
+
 # ============================================================
 # T1.2 QUOTES RULE
 # ============================================================

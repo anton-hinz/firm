@@ -17,7 +17,7 @@ You can interpret and execute FIRM scripts. FIRM is a minimal language for struc
 
 **Inside a flow:**
 - `> instruction` — natural-language directive
-- `-> name` — capture result into variable. Writes to first match: local, then global. If not found, creates local.
+- `-> name` — capture result into variable. Writes to first match: local, then global. If not found, creates local. `->` without a name writes to `$it` (pipe).
 - `$name`, `$name.field`, `$name[0]` — variable references
 - `if $x is value:` / `elif` / `else:` — soft match. `== value` — exact.
 - `when $x:` — truthiness check
@@ -37,7 +37,7 @@ You can interpret and execute FIRM scripts. FIRM is a minimal language for struc
 
 **Error handling:** `@handler` sets the current error handler (one mutable register, each new replaces previous). `@skip` (default) = null + continue. `@exit` / `@exit: "reason"` = halt. `@say` / `@say: "message"` = tell user + halt. `@retry (max N)` = restart from handler position. `@run flow($error)` = recovery flow + continue. `raise` / `raise: "reason"` triggers handler. `$error` set on error, cleared after handler.
 
-**Reserved variables:** `$input` — current user input, overwritten by `ask:`. `$error` — current error. Both runtime-managed.
+**Reserved variables:** `$input` — current user input, overwritten by `ask:`. `$error` — current error. `$it` — result of last unnamed `->`, local to current flow. All reserved — do not declare or assign manually.
 
 **Frame:** `role:`, `context:`, `tone:`, `rules:`, `glossary:`, `use: frame_name`.
 
@@ -50,7 +50,7 @@ You can interpret and execute FIRM scripts. FIRM is a minimal language for struc
 2. Evaluate guard on every user message — reject if out of scope.
 3. Evaluate triggers top to bottom. First match wins.
 4. Execute the matched flow. If no trigger matches, respond freely within frame/guard context.
-5. `->` captures results. `is` = soft match. `==` = exact. `when` = truthiness.
+5. `->` captures results (`-> name` or unnamed `->` to `$it`). `is` = soft match. `==` = exact. `when` = truthiness.
 6. `say:` = user output (flow continues). `return:` = to caller (flow ends). `exit:` = halt. `ask:` = wait, overwrites `$input`.
 7. Flows are scoped. Sub-flows see only their locals and globals, not caller's locals.
 
@@ -108,8 +108,9 @@ sections:
     key_concepts:
       - flow is a named sequence of steps, invoked only by triggers or run
       - ">" is a natural-language instruction to the LLM
-      - -> captures the result into a variable
+      - -> captures the result into a variable; -> without a name writes to $it (pipe)
       - $name references a variable; .field and [0] for access
+      - $it holds the result of the last unnamed -> (pipe variable)
       - without -> the result is discarded (side-effect only)
       - a flow ends at its last step, return:, or exit: — not at say:
 
@@ -123,6 +124,7 @@ sections:
       - sub-flows receive args explicitly and return via return:
       - $input is reserved — current user input, overwritten by ask:
       - $error is reserved — set on error, cleared after handler completes
+      - $it is reserved — result of last unnamed ->, local to current flow
       - reserved variables cannot be declared or assigned manually
 
   - id: control-flow
@@ -403,10 +405,8 @@ extract from $available_questions[0]: question, options, correct -> $q
 > The correct answer is: $q.options[$q.correct]. Store it.
 -> correct_text
 
-> Randomize the order of these options: $q.options
--> shuffled_options
-
-> Format $shuffled_options as a numbered list (1-4)
+> Randomize the order of these options: $q.options ->
+> Format $it as a numbered list (1-4)
 -> formatted_options
 
 return: {
@@ -422,10 +422,9 @@ return: {
 > Generate a quiz question that tests understanding (not just recall)
 > Create 4 plausible options where exactly one is correct
 > Make wrong options realistic — common misconceptions, not obviously wrong
-> Place the correct answer at a random position
--> generated
+> Place the correct answer at a random position ->
 
-extract from $generated: question, options, correct_answer -> $q
+extract from $it: question, options, correct_answer -> $q
 
 > Format $q.options as a numbered list (1-4)
 -> formatted_options
@@ -480,9 +479,8 @@ say: $summary
 -> cert_id
 > Count total sections passed in $progress
 -> total_passed
-> Summarize $progress as one-line achievement stats
--> stats
-> Write a brief congratulatory note with $stats, then rewrite it as a formal but slightly humorous certification statement
+> Summarize $progress as one-line achievement stats ->
+> Write a brief congratulatory note with $it, then rewrite it as a formal but slightly humorous certification statement
 -> statement
 
 say: "============================================"

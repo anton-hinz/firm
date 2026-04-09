@@ -407,6 +407,22 @@ A quoted `>` emits literal text (with variable expansion):
 
 Without `->`, the result is discarded (side-effect only).
 
+#### Pipe: `->` without a name
+
+`->` without a variable name writes to the reserved variable `$it`:
+
+```
+> Extract metrics from $data ->
+> Compare $it to previous quarter ->
+> Format $it as markdown
+-> report
+say: $report
+```
+
+Each unnamed `->` overwrites `$it`. Use named capture (`-> name`) when the value is needed later; use unnamed `->` for linear chains where only the current result matters.
+
+`$it` is local to the current flow. It can be used anywhere a variable is expected: in `>`, operators, conditions, `say:`, etc.
+
 ### 6.5 Variables
 
 - `$name` — reference a captured value
@@ -451,12 +467,13 @@ $state = "logged"                          # writes to global
 
 #### Reserved variables
 
-Two variables are managed by the runtime. They always exist, cannot be declared by the user, and have automatic lifecycle:
+Three variables are managed by the runtime. They always exist, cannot be declared by the user, and have automatic lifecycle:
 
 - **`$input`** — the current user input. Set on each user message (triggers, entry flow) and overwritten by `ask:`. Cleared after the flow or handler completes.
 - **`$error`** — the current error. Set when an error is raised. Cleared after the handler completes. `null` between errors.
+- **`$it`** — the result of the last unnamed `->`. Overwritten by each `->` without a variable name. Local to the current flow.
 
-These follow normal scoping for reads — any flow can reference `$input` and `$error`. But their values are managed by the runtime, not by `->` or `=`.
+`$input` and `$error` are runtime-managed — not by `->` or `=`. `$it` is written exclusively by unnamed `->` and read like any variable.
 
 ### 6.6 Conditions
 
@@ -864,7 +881,7 @@ return: $score
 FIRM constructs fall into two tiers for conformance testing:
 
 **Tier 1 — Mechanical (must be 100%).** These constructs have deterministic behavior. Any LLM claiming FIRM support must execute them correctly every time:
-- `->` capture, `$` substitution, `==` comparison, quoted text
+- `->` capture (named and unnamed/`$it`), `$` substitution, `==` comparison, quoted text
 - `if`/`elif`/`else`, `when`, `each`, `until`
 - `run`, `return:`, `exit:`, `say:` (with quotes)
 - `@handler`, `raise`, `$error` lifecycle

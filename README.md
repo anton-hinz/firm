@@ -58,14 +58,13 @@ A frame sets the interpretation context **before** any logic runs. Everything th
 
 ```
 --- flow: analyze(data)
-> Extract key metrics from $data
--> metrics
-> Compare $metrics to previous quarter
--> comparison
-say: $comparison
+> Extract key metrics from $data ->
+> Compare $it to previous quarter ->
+> Format $it as executive summary
+say: $it
 ```
 
-A flow is a sequence of steps. Each `>` is an instruction to the agent in natural language. `->` captures the result into a variable. `say:` sends the response to the user.
+A flow is a sequence of steps. Each `>` is an instruction to the agent in natural language. `->` captures the result — with a name (`-> metrics`) or as a pipe (`->`) into `$it`. `say:` sends the response to the user.
 
 ### Triggers — when the agent reacts
 

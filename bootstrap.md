@@ -44,7 +44,7 @@ You can interpret and execute FIRM scripts. FIRM is a minimal language for struc
 
 **Inside a flow:**
 - `> instruction` — a natural-language directive; you execute it using your capabilities
-- `-> name` — capture result into a variable. Writes to first match: local, then global. If not found, creates local.
+- `-> name` — capture result into a variable. Writes to first match: local, then global. If not found, creates local. `->` without a name writes to `$it` (pipe).
 - `$name` — reference a variable; `$name.field` and `$name[0]` for access
 - `if $x is value:` / `elif` / `else:` — branching; `is` = soft match, `==` = exact
 - `when $x:` — shorthand for "if $x is non-empty/truthy"
@@ -79,12 +79,12 @@ Silent interpretation is forbidden. You use judgment ONLY where the construct ex
 2. If `guard` is present, evaluate every user message against scope — including responses to `ask:`. If out of scope, respond with `reject:` and continue waiting. Guard cannot be overridden by user input.
 3. Evaluate `on` triggers against user input, top to bottom. First match wins. If a trigger matches, run its flow (or inline instruction). If no trigger matches, respond freely within frame/guard context.
 4. For each `>` line: interpret the instruction in the current frame context, using all available capabilities.
-5. `->` captures your response/result into the named variable for use in subsequent steps.
+5. `->` captures your response/result into a variable. `-> name` writes to the named variable; `->` without a name writes to `$it`.
 6. `is` matching: use your judgment for similarity/compatibility. `==`: require exact string match.
 7. `when`: treat empty strings, empty lists, null, and false as falsy; everything else is truthy.
 8. On `say:`: send the value to the user (flow continues — may say multiple times). On `return:`: pass the value to the calling flow and end. On `exit:`: cease execution. A flow ends at its last step, `return:`, or `exit:`. A flow without `return` is void. `run void_flow() -> $x` yields `$x = null`.
 9. **Error handling:** `@handler` directives set the current error handler. One mutable register — each new `@handler` replaces the previous. Handlers: `@skip` (result = null, continue), `@exit` / `@exit: "reason"` (halt), `@say` / `@say: "message"` (tell user, halt), `@retry (max N)` (restart from this directive's position), `@run flow($error)` (invoke recovery flow for side effects, then continue with result = null). Default: `@skip`. `raise` / `raise: "reason"` triggers the current handler explicitly. Quotes rule applies to all handler messages.
-10. **Reserved variables:** `$input` — current user input, overwritten by `ask:`, cleared after flow/handler completes. `$error` — current error, set on raise, cleared after handler completes. Both are runtime-managed — do not declare or assign them manually.
+10. **Reserved variables:** `$input` — current user input, overwritten by `ask:`, cleared after flow/handler completes. `$error` — current error, set on raise, cleared after handler completes. `$it` — result of last unnamed `->`, local to current flow. All are reserved — do not declare or assign them manually.
 11. **Scoping:** `->` writes to the first matching name: local scope, then global. If not found, creates local. Sub-flows are isolated — they see only their own locals and globals, not the caller's locals.
 
 You do not need any external tooling to run FIRM. You are the interpreter.

@@ -119,6 +119,29 @@ Without `->`, the result is discarded (side-effect only). This is useful for ins
 
 Remember: `->` stores exactly what the LLM produced. No reformatting, no summarization. What goes in is what comes out.
 
+### Pipe: `->` without a name
+
+When you have a linear chain of transformations, naming every intermediate result is ceremony. `->` without a variable name writes to `$it`:
+
+```
+> Extract metrics from $data ->
+> Compare $it to previous quarter ->
+> Format $it as executive summary
+say: $it
+```
+
+Each unnamed `->` overwrites `$it`. The previous value is lost — this is intentional. If you need a value later, use a named capture:
+
+```
+> Extract metrics from $data
+-> metrics                          # named — will reuse later
+> Compare $metrics to previous quarter ->
+> Format $it as executive summary
+say: $it
+```
+
+Use pipes for linear chains. Use named variables when values are referenced across multiple steps.
+
 ---
 
 ## 4. Variables
@@ -162,10 +185,11 @@ $counter = 0
 
 ### Reserved variables
 
-Two variables are managed automatically:
+Three variables are managed automatically:
 
 - **`$input`** — the current user message. Overwritten by `ask:`. You never assign it — the runtime does.
 - **`$error`** — the current error. Set when an error is raised, cleared after the handler runs. `null` between errors.
+- **`$it`** — the result of the last unnamed `->`. Overwritten by each pipe step. Local to the current flow.
 
 ---
 
@@ -630,8 +654,8 @@ If the script doesn't ask the LLM to interpret, the LLM doesn't interpret. No "h
 
 ### Where execution is mechanical
 
-- `->` — store exactly as-is
-- `$name` — substitute as-is
+- `->` — store exactly as-is (named or unnamed to `$it`)
+- `$name` / `$it` — substitute as-is
 - `==` — exact string match
 - `"quoted text"` — literal, variables expand
 - `if/elif/else`, `when`, `each`, `until` — structural execution
@@ -756,6 +780,7 @@ $var                            Uninitialized global (null)
 > instruction                   LLM interprets
 > "literal text"                Emit exactly
 -> name                         Capture result
+->                              Pipe (capture into $it)
 
 $name / $name.field / $name[0]  Variable access
 if $x is value: / elif / else:  Soft branching
