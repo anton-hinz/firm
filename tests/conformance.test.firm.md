@@ -71,17 +71,21 @@
 #   Total: N | Pass: N | Fail: N | Flaky: N
 #
 #   Failed:
-#     - [T1] test-name: expected X, got Y
-#     - [T2] test-name: expected X, got Y
+#     - [T1] test-name: input="..." expected="..." got="..."
+#     - [T2] test-name: input="..." expected="..." got="..."
 #
 #   Flaky:
-#     - test-name: details
+#     - test-name: run1="..." run2="..."
 #
 #   By category:
 #     capture:        N/M
 #     ...
 #
 #   Overall: Tier 1 X%, Tier 2 Y%
+#
+# IMPORTANT: For each failed test, always include the compact triple:
+#   input, expected, got. This makes failures immediately diagnosable.
+#   Truncate long values to ~60 chars with "..." if needed.
 
 # ████████████████████████████████████████████████████████████
 # TIER 1 — MECHANICAL CORE
@@ -1435,4 +1439,120 @@ script: |
   > Classify "I love this" as positive or negative
 steps:
   - input: "go"
+    expect: any
+
+# ============================================================
+# T2.6 INTERPRETATION MODALITY
+# ============================================================
+
+--- test: strict-rejects-borderline
+description: is (strict) must reject ambiguous input that is not a clear affirmative
+tier: 2
+tags: [interpretation, modality]
+script: |
+  --- flow: test()
+  if $input is (strict) affirmative:
+    say: "yes"
+  else:
+    say: "no"
+  --- on: go
+  run test()
+steps:
+  - input: "Well, it's not the worst idea I've heard"
+    expect: contains "no"
+
+--- test: strict-accepts-clear
+description: is (strict) must accept unambiguous input
+tier: 2
+tags: [interpretation, modality]
+script: |
+  --- flow: test()
+  if $input is (strict) affirmative:
+    say: "yes"
+  else:
+    say: "no"
+  --- on: go
+  run test()
+steps:
+  - input: "Yes, approved"
+    expect: contains "yes"
+
+--- test: loose-accepts-borderline
+description: is (loose) must accept indirect positive signals
+tier: 2
+tags: [interpretation, modality]
+script: |
+  --- flow: test()
+  if $input is (loose) affirmative:
+    say: "yes"
+  else:
+    say: "no"
+  --- on: go
+  run test()
+steps:
+  - input: "I suppose that could work"
+    expect: contains "yes"
+
+--- test: default-is-accepts-clear
+description: default is must accept reasonably clear affirmative
+tier: 2
+tags: [interpretation, modality]
+script: |
+  --- flow: test()
+  if $input is affirmative:
+    say: "yes"
+  else:
+    say: "no"
+  --- on: go
+  run test()
+steps:
+  - input: "Sure, sounds good"
+    expect: contains "yes"
+
+--- test: strict-identify-rejects-vague
+description: identify (strict) must reject vague, indirect signals
+tier: 2
+tags: [interpretation, modality, operators]
+script: |
+  --- flow: test()
+  identify (strict) $input as a request to cancel -> $is_cancel
+  if $is_cancel:
+    say: "cancel"
+  else:
+    say: "not cancel"
+  --- on: go
+  run test()
+steps:
+  - input: "I'm not really happy with this service"
+    expect: contains "not cancel"
+
+# ============================================================
+# T2.7 LANGUAGE FRAME PROPERTY
+# ============================================================
+
+--- test: language-auto-mirrors-user
+description: language auto (default) must respond in user's language
+tier: 2
+tags: [interpretation, frame, language]
+script: |
+  --- frame
+  role: assistant
+  --- on: go
+  > Greet the user briefly
+steps:
+  - input: "Bonjour!"
+    expect: any
+
+--- test: language-explicit-overrides
+description: explicit language must respond in that language regardless of user input
+tier: 2
+tags: [interpretation, frame, language]
+script: |
+  --- frame
+  role: assistant
+  language: en
+  --- on: go
+  > Greet the user briefly
+steps:
+  - input: "Привет!"
     expect: any

@@ -47,14 +47,7 @@ You can interpret and execute FIRM scripts. FIRM is a minimal language for struc
 
 **Interpretation discipline:** Silent interpretation is forbidden. Use judgment ONLY where the construct allows it: unquoted `>`, `is`, operators, `match:`, unquoted `say:`/`ask:`/`exit:`. Judgment intensity is tuned by `(strict)` / `(loose)`. Everything else is mechanical. The script is the authority.
 
-**Sequence:**
-1. Load frames.
-2. Evaluate guard on every user message — reject if out of scope.
-3. Evaluate triggers top to bottom. First match wins.
-4. Execute the matched flow. If no trigger matches, respond freely within frame/guard context.
-5. `->` captures results (`-> name` or unnamed `->` to `$it`). `is` = soft match. `==` = exact. `when` = truthiness.
-6. `say:` = user output (flow continues). `return:` = to caller (flow ends). `exit:` = halt. `ask:` = wait, overwrites `$input`.
-7. Flows are scoped. Sub-flows see only their locals and globals, not caller's locals.
+**Sequence:** Load frames (merge, later overrides) → evaluate guard on each message → triggers top-to-bottom, first match wins → execute flow. Sub-flows are isolated: own locals + globals only.
 
 You are the interpreter.
 
@@ -75,6 +68,7 @@ sections:
       - role sets the agent identity
       - context provides background and constraints
       - tone controls communication style
+      - language controls response language (auto/locale/list) — frame-level, bypasses guard
       - rules are hard constraints (list)
       - glossary defines terms for consistent interpretation
       - multiple frames merge; later rules override
@@ -235,6 +229,7 @@ sections:
       - freedom is granted only by specific constructs
       - "> without quotes", is, operators, match:, unquoted say/ask/exit allow interpretation
       - "->", $, ==, quoted text, if/each/until/run/return, @handler, raise are mechanical
+      - (strict) and (loose) tune judgment intensity — strict = only unambiguous, loose = accept borderline
       - the script is the authority
     hardcoded:
       - question: "Which of these constructs allows the LLM to use its judgment?"
@@ -292,11 +287,13 @@ reject: "This session is for the FIRM certification quiz only. Type 'start' to b
 kb.read_yaml(path: "quiz-knowledge.yaml") -> $knowledge
 extract from $knowledge: sections -> $all_sections
 
-$progress = { passed: [], failed: [], total_correct: 0, total_wrong: 0 }
+> Initialize progress: passed = empty list, failed = empty list, total_correct = 0, total_wrong = 0
+-> progress
 $quiz_active = true
 
+> Count sections in $all_sections ->
 say: "FIRM Certified Engineer Exam"
-say: "You'll be tested on $all_sections.length sections. Pass each section to earn your certificate."
+say: "You'll be tested on $it sections. Pass each section to earn your certificate."
 say: "Let's begin."
 
 each $section in $all_sections:
@@ -311,10 +308,12 @@ each $section in $all_sections:
     -> $progress
     say: "Section '$section.title' — needs retake. We'll continue for now."
 
-filter $all_sections where id is in $progress.failed -> $failed_sections
+> Collect sections from $all_sections whose id appears in $progress.failed
+-> failed_sections
 
 when $failed_sections:
-  say: "You need to retake $failed_sections.length section(s) before certification."
+  > Count sections in $failed_sections ->
+  say: "You need to retake $it section(s) before certification."
 
   each $section in $failed_sections:
     say: "Retaking: $section.title"
@@ -343,7 +342,8 @@ until $state.correct >= 2 (max 5):
     return: { passed: false, wrong_count: $state.wrong }
 
   when $section.hardcoded:
-    filter $section.hardcoded where id is not in $state.asked_ids -> $available
+    > From $section.hardcoded, select questions whose id is not in $state.asked_ids
+    -> available
 
   if $available:
     run ask-hardcoded($available) -> $qa
