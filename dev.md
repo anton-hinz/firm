@@ -40,10 +40,10 @@ $state
 --- tools: name
 ...
 
---- on: trigger-name
+--- flow: name
 ...
 
---- flow: name
+--- on: trigger-name
 ...
 ```
 
@@ -53,8 +53,8 @@ Five section types:
 - `frame` — interpretation context
 - `guard` — input scope filter (what the agent will and won't engage with)
 - `tools` — MCP server contract (external capabilities)
-- `on` — trigger (listens for a condition, launches a flow)
 - `flow` — executable logic
+- `on` — trigger (listens for a condition, launches a flow)
 
 ---
 
@@ -792,9 +792,6 @@ role: Financial advisor
 A script can define multiple flows. Flows are only invoked explicitly — via triggers (`run`) or from other flows (`run`). There is no implicit entry point.
 
 ```
---- on: incoming
-run main($input)
-
 --- flow: main(input)
 run classify($input) -> $type
 run handle($input, $type) -> $result
@@ -812,6 +809,9 @@ else:
   > Write a summary of $text
 -> output
 return: $output
+
+--- on: incoming
+run main($input)
 ```
 
 ---

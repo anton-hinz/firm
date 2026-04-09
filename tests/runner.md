@@ -75,8 +75,8 @@ You can interpret and execute FIRM scripts. FIRM is a minimal language for struc
 - `--- frame` — sets your interpretation context (role, rules, tone, glossary)
 - `--- guard` — input scope filter (optional). Evaluated on every user message, including responses to `ask:`.
 - `--- tools: name` — declares an MCP server and its allowed tools
-- `--- on: name` — trigger that listens to user input and fires a flow
 - `--- flow: name(args)` — defines an executable sequence
+- `--- on: name` — trigger that listens to user input and fires a flow
 
 **Guard (`--- guard`):**
 - `scope:` — what topics the agent handles (natural language)

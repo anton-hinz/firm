@@ -98,12 +98,12 @@ description: -> must store the result of a quoted > exactly
 tier: 1
 tags: [mechanical, capture]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   > "The answer is 42."
   -> result
   say: $result
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "The answer is 42."
@@ -113,12 +113,12 @@ description: -> must store multi-sentence quoted text without truncation
 tier: 1
 tags: [mechanical, capture]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   > "First. Second. Third. Fourth. Fifth."
   -> result
   say: $result
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "First. Second. Third. Fourth. Fifth."
@@ -129,10 +129,10 @@ tier: 1
 tags: [mechanical, capture]
 script: |
   $val = "ERROR_CODE_7"
-  --- on: go
-  run test()
   --- flow: test()
   say: "Result is $val"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "Result is ERROR_CODE_7"
@@ -143,10 +143,10 @@ tier: 1
 tags: [mechanical, capture]
 script: |
   $user = { name: "Alice", role: "admin" }
-  --- on: go
-  run test()
   --- flow: test()
   say: "$user.name is $user.role"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "Alice is admin"
@@ -157,11 +157,11 @@ tier: 1
 tags: [mechanical, capture]
 script: |
   $val = "unchanged"
-  --- on: go
-  run test()
   --- flow: test()
   > "something"
   say: $val
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "unchanged"
@@ -171,11 +171,11 @@ description: -> without a name must write to $it
 tier: 1
 tags: [mechanical, capture, pipe]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   > "hello world" ->
   say: $it
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "hello world"
@@ -185,12 +185,12 @@ description: Each unnamed -> must overwrite $it
 tier: 1
 tags: [mechanical, capture, pipe]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   > "first" ->
   > "second" ->
   say: $it
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "second"
@@ -200,13 +200,13 @@ description: Pipe chain ending with named capture must work
 tier: 1
 tags: [mechanical, capture, pipe]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   > "alpha" ->
   > "$it-beta"
   -> result
   say: $result
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "alpha-beta"
@@ -216,8 +216,6 @@ description: $it must not leak between flows
 tier: 1
 tags: [mechanical, capture, pipe]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   > "parent" ->
   run child()
@@ -225,6 +223,8 @@ script: |
   --- flow: child()
   > "child" ->
   say: $it
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "child"
@@ -239,10 +239,10 @@ description: say: with quotes must output literal text, nothing else
 tier: 1
 tags: [mechanical, quotes]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   say: "Error 404: Not Found"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "Error 404: Not Found"
@@ -252,10 +252,10 @@ description: Quoted say: must not add greetings, commentary, or formatting
 tier: 1
 tags: [mechanical, quotes]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   say: "Done."
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "Done."
@@ -266,10 +266,10 @@ tier: 1
 tags: [mechanical, quotes]
 script: |
   $name = "Alice"
-  --- on: go
-  run test()
   --- flow: test()
   say: "Hello, $name."
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "Hello, Alice."
@@ -279,12 +279,12 @@ description: > with quotes must emit exact text
 tier: 1
 tags: [mechanical, quotes]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   > "Step 1 complete."
   -> msg
   say: $msg
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "Step 1 complete."
@@ -294,11 +294,11 @@ description: exit: with quotes must halt with literal reason
 tier: 1
 tags: [mechanical, quotes]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   exit: "Schema error: field X missing"
   say: "should not appear"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "Schema error: field X missing"
@@ -314,13 +314,13 @@ tier: 1
 tags: [mechanical, conditions]
 script: |
   $val = "bug"
-  --- on: go
-  run test()
   --- flow: test()
   if $val == "bug":
     say: "exact"
   else:
     say: "no match"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "exact"
@@ -331,13 +331,13 @@ tier: 1
 tags: [mechanical, conditions]
 script: |
   $val = "Bug report"
-  --- on: go
-  run test()
   --- flow: test()
   if $val == "bug":
     say: "matched"
   else:
     say: "no match"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "no match"
@@ -348,13 +348,13 @@ tier: 1
 tags: [mechanical, conditions]
 script: |
   $val = "Hello"
-  --- on: go
-  run test()
   --- flow: test()
   if $val == "hello":
     say: "matched"
   else:
     say: "no match"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "no match"
@@ -365,12 +365,12 @@ tier: 1
 tags: [mechanical, conditions]
 script: |
   $val
-  --- on: go
-  run test()
   --- flow: test()
   when $val:
     say: "truthy"
   say: "done"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "done"
@@ -382,12 +382,12 @@ tier: 1
 tags: [mechanical, conditions]
 script: |
   $val = false
-  --- on: go
-  run test()
   --- flow: test()
   when $val:
     say: "truthy"
   say: "done"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "done"
@@ -399,11 +399,11 @@ tier: 1
 tags: [mechanical, conditions]
 script: |
   $val = "hello"
-  --- on: go
-  run test()
   --- flow: test()
   when $val:
     say: "truthy"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "truthy"
@@ -414,12 +414,12 @@ tier: 1
 tags: [mechanical, conditions]
 script: |
   $val = 0
-  --- on: go
-  run test()
   --- flow: test()
   when $val:
     say: "truthy"
   say: "done"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "truthy"
@@ -430,8 +430,6 @@ tier: 1
 tags: [mechanical, conditions]
 script: |
   $val = "b"
-  --- on: go
-  run test()
   --- flow: test()
   if $val == "a":
     say: "A"
@@ -439,6 +437,8 @@ script: |
     say: "B"
   else:
     say: "C"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "B"
@@ -449,8 +449,6 @@ tier: 1
 tags: [mechanical, conditions]
 script: |
   $val = "x"
-  --- on: go
-  run test()
   --- flow: test()
   if $val == "a":
     say: "A"
@@ -458,6 +456,8 @@ script: |
     say: "B"
   else:
     say: "C"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "C"
@@ -471,12 +471,12 @@ description: say: must NOT terminate the flow
 tier: 1
 tags: [mechanical, control]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   say: "first"
   say: "second"
   say: "third"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "first"
@@ -488,14 +488,14 @@ description: return: must end the flow and pass value
 tier: 1
 tags: [mechanical, control]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   run sub() -> $val
   say: $val
   --- flow: sub()
   return: "from sub"
   say: "should not appear"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "from sub"
@@ -506,12 +506,12 @@ description: exit: must halt execution — nothing after it runs
 tier: 1
 tags: [mechanical, control]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   say: "before"
   exit: "stopping"
   say: "after"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "before"
@@ -522,8 +522,6 @@ description: Flow without return must yield null
 tier: 1
 tags: [mechanical, control]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   run side() -> $result
   when $result:
@@ -531,6 +529,8 @@ script: |
   say: "null"
   --- flow: side()
   > "working"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "null"
@@ -546,10 +546,10 @@ tier: 1
 tags: [mechanical, scoping]
 script: |
   $greeting = "hello world"
-  --- on: go
-  run test()
   --- flow: test()
   say: $greeting
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "hello world"
@@ -560,13 +560,13 @@ tier: 1
 tags: [mechanical, scoping]
 script: |
   $state = "before"
-  --- on: go
-  run test()
   --- flow: test()
   $state = "after"
   run check()
   --- flow: check()
   say: $state
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "after"
@@ -577,13 +577,13 @@ tier: 1
 tags: [mechanical, scoping]
 script: |
   $flag = "off"
-  --- on: go
-  run test()
   --- flow: test()
   run toggle()
   say: $flag
   --- flow: toggle()
   $flag = "on"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "on"
@@ -593,8 +593,6 @@ description: Sub-flow must NOT see caller's local variables
 tier: 1
 tags: [mechanical, scoping]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   > "secret"
   -> local_val
@@ -603,6 +601,8 @@ script: |
   when $local_val:
     say: "leak"
   say: "isolated"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "isolated"
@@ -614,12 +614,12 @@ tier: 1
 tags: [mechanical, scoping]
 script: |
   $shared = "visible"
-  --- on: go
-  run test()
   --- flow: test()
   run child()
   --- flow: child()
   say: $shared
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "visible"
@@ -630,12 +630,12 @@ tier: 1
 tags: [mechanical, scoping]
 script: |
   $target = "old"
-  --- on: go
-  run test()
   --- flow: test()
   > "new"
   -> target
   say: $target
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "new"
@@ -645,8 +645,6 @@ description: -> must create local when no global matches
 tier: 1
 tags: [mechanical, scoping]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   > "temp"
   -> local_only
@@ -655,6 +653,8 @@ script: |
   --- flow: check()
   when $local_only:
     say: "leak"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "done"
@@ -665,13 +665,13 @@ description: run must pass arguments explicitly
 tier: 1
 tags: [mechanical, scoping]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   run greet("World") -> $msg
   say: $msg
   --- flow: greet(name)
   return: "Hello, $name!"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "Hello, World!"
@@ -681,8 +681,6 @@ description: Flows calling flows calling flows must work
 tier: 1
 tags: [mechanical, scoping]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   run a() -> $val
   say: $val
@@ -691,6 +689,8 @@ script: |
   return: "a($inner)"
   --- flow: b()
   return: "b"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "a(b)"
@@ -704,14 +704,14 @@ description: $error must be null after handler completes
 tier: 1
 tags: [mechanical, reserved]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   @skip
   raise: "test error"
   when $error:
     say: "still set"
   say: "cleared"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "cleared"
@@ -722,10 +722,10 @@ description: $input must contain the user's message
 tier: 1
 tags: [mechanical, reserved]
 script: |
-  --- on: catch
-  run test()
   --- flow: test()
   say: "you said: $input"
+  --- on: catch
+  run test()
 steps:
   - input: "hello world"
     expect: contains "hello world"
@@ -739,12 +739,12 @@ description: @skip must continue with null
 tier: 1
 tags: [mechanical, error-handling]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   @skip
   raise: "oops"
   say: "continued"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "continued"
@@ -754,12 +754,12 @@ description: @exit must halt on error with message
 tier: 1
 tags: [mechanical, error-handling]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   @exit: "fatal error"
   raise: "oops"
   say: "should not appear"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "fatal error"
@@ -770,12 +770,12 @@ description: @say must output message and halt
 tier: 1
 tags: [mechanical, error-handling]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   @say: "Error: $error"
   raise: "broken"
   say: "should not appear"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "Error: broken"
@@ -786,13 +786,13 @@ description: Each @handler must fully replace the previous
 tier: 1
 tags: [mechanical, error-handling]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   @exit: "should not see this"
   @skip
   raise: "test"
   say: "continued"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "continued"
@@ -803,14 +803,14 @@ tier: 1
 tags: [mechanical, error-handling]
 script: |
   $captured
-  --- on: go
-  run test()
   --- flow: test()
   @run save($error)
   raise: "specific reason"
   say: $captured
   --- flow: save(msg)
   $captured = $msg
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "specific reason"
@@ -821,14 +821,14 @@ tier: 1
 tags: [mechanical, error-handling]
 script: |
   $recovered = false
-  --- on: go
-  run test()
   --- flow: test()
   @run recover($error)
   raise: "oops"
   say: "recovered=$recovered"
   --- flow: recover(msg)
   $recovered = true
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "recovered=true"
@@ -840,8 +840,6 @@ tags: [mechanical, error-handling]
 script: |
   $step_a = 0
   $step_b = 0
-  --- on: go
-  run test()
   --- flow: test()
   @retry (max 2)
   > "Increment $step_a by 1"
@@ -850,6 +848,8 @@ script: |
     $step_b = 1
     raise: "retry"
   say: "a=$step_a"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "a=2"
@@ -943,11 +943,11 @@ description: ask: must overwrite $input with user's response
 tier: 1
 tags: [mechanical, ask]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   ask: "What is your name?"
   say: "Hello, $input"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "What is your name?"
@@ -960,14 +960,14 @@ tier: 1
 tags: [mechanical, ask]
 script: |
   $code = "secret123"
-  --- on: go
-  run test()
   --- flow: test()
   ask: "Enter the code:"
   if $input == $code:
     say: "correct"
   else:
     say: "wrong"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "Enter the code"
@@ -979,15 +979,15 @@ description: Triggers must NOT re-evaluate during active flow
 tier: 1
 tags: [mechanical, ask]
 script: |
+  --- flow: test()
+  ask: "Say anything:"
+  say: "flow got: $input"
   --- on: intercept
   match: $input == "abort"
   > "intercepted!"
   --- on: go
   match: $input == "go"
   run test()
-  --- flow: test()
-  ask: "Say anything:"
-  say: "flow got: $input"
 steps:
   - input: "go"
     expect: contains "Say anything"
@@ -1004,12 +1004,12 @@ description: Quoted > captured by -> must not gain extra content
 tier: 1
 tags: [mechanical, discipline]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   > "42"
   -> val
   say: "$val"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "42"
@@ -1019,12 +1019,12 @@ description: Captured literal must not be reformatted
 tier: 1
 tags: [mechanical, discipline]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   > "a,b,c,d,e"
   -> val
   say: $val
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "a,b,c,d,e"
@@ -1035,13 +1035,13 @@ tier: 1
 tags: [mechanical, conditions]
 script: |
   $val = "unknown"
-  --- on: go
-  run test()
   --- flow: test()
   if $val == "yes":
     say: "A"
   else:
     say: "B"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "B"
@@ -1056,13 +1056,13 @@ tier: 1
 tags: [mechanical, loops]
 script: |
   $items = ["apple", "banana", "cherry"]
-  --- on: go
-  run test()
   --- flow: test()
   each $item in $items:
     > "$item"
     -> $results[]
   say: "count: $results.length"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "3"
@@ -1073,12 +1073,12 @@ tier: 1
 tags: [mechanical, loops]
 script: |
   $counter = 0
-  --- on: go
-  run test()
   --- flow: test()
   until $counter > 100 (max 3):
     $counter = $counter + 1
   say: "counter: $counter"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "3"
@@ -1090,8 +1090,6 @@ tags: [mechanical, loops]
 script: |
   $items = ["a", "FAIL", "b"]
   $collected = 0
-  --- on: go
-  run test()
   --- flow: test()
   @skip
   each $item in $items:
@@ -1099,6 +1097,8 @@ script: |
       raise: "skip"
     $collected = $collected + 1
   say: "collected: $collected"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "2"
@@ -1117,8 +1117,6 @@ description: is must recognize semantic similarity
 tier: 2
 tags: [interpretation, conditions]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   > "This is a critical production outage"
   -> val
@@ -1126,6 +1124,8 @@ script: |
     say: "urgent"
   else:
     say: "not urgent"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "urgent"
@@ -1135,10 +1135,10 @@ description: Unquoted say: must let LLM generate freely
 tier: 2
 tags: [interpretation, quotes]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   say: explain in one sentence what HTTP 404 means
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: any
@@ -1153,14 +1153,14 @@ description: identify must detect matching input
 tier: 2
 tags: [interpretation, operators]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   identify "The button crashes when I click it" as bug-report -> $is_bug
   if $is_bug:
     say: "bug"
   else:
     say: "not bug"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "bug"
@@ -1170,14 +1170,14 @@ description: identify must reject non-matching input
 tier: 2
 tags: [interpretation, operators]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   identify "What a lovely day" as bug-report -> $is_bug
   if $is_bug:
     say: "bug"
   else:
     say: "not bug"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "not bug"
@@ -1187,11 +1187,11 @@ description: narrow must select the best matching category
 tier: 2
 tags: [interpretation, operators]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   narrow "I can't log into my account" to [billing, technical, account] -> $dept
   say: $dept
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "account"
@@ -1201,11 +1201,11 @@ description: narrow with or must return fallback when nothing fits
 tier: 2
 tags: [interpretation, operators]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   narrow "What's the weather like?" to [billing, technical, account] or "other" -> $dept
   say: $dept
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "other"
@@ -1215,11 +1215,11 @@ description: extract must pull named fields from text
 tier: 2
 tags: [interpretation, extract]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   extract from "My name is Alice and my email is alice@example.com": name, email -> $data
   say: "$data.name / $data.email"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "Alice"
@@ -1230,13 +1230,13 @@ description: Missing non-required field must be null
 tier: 2
 tags: [interpretation, extract]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   extract from "Just a name: Bob": name, phone -> $data
   when $data.phone:
     say: "has phone"
   say: "phone is null"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: "phone is null"
@@ -1247,12 +1247,12 @@ description: Required field missing must raise error
 tier: 2
 tags: [interpretation, extract]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   @say: "Missing: $error"
   extract from "no email here": email! -> $data
   say: "should not reach"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "Missing"
@@ -1263,12 +1263,12 @@ description: Quoted constraint must raise on non-matching value
 tier: 2
 tags: [interpretation, extract]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   @say: "constraint violated: $error"
   extract from "severity is critical": severity! ("high" | "medium" | "low") -> $data
   say: "got $data.severity"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "constraint violated"
@@ -1279,11 +1279,11 @@ description: Quoted constraint must accept exact value
 tier: 2
 tags: [interpretation, extract]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   extract from "severity is high": severity! ("high" | "medium" | "low") -> $data
   say: "got $data.severity"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "high"
@@ -1293,11 +1293,11 @@ description: Unquoted constraint must use LLM judgment
 tier: 2
 tags: [interpretation, extract]
 script: |
-  --- on: go
-  run test()
   --- flow: test()
   extract from "the server crashed and users can't log in": severity (high | medium | low) -> $data
   say: $data.severity
+  --- on: go
+  run test()
 steps:
   - input: "go"
     runs: 3
@@ -1309,11 +1309,11 @@ tier: 2
 tags: [interpretation, operators]
 script: |
   $users = [{name: "Alice", role: "admin"}, {name: "Bob", role: "user"}, {name: "Carol", role: "admin"}]
-  --- on: go
-  run test()
   --- flow: test()
   filter $users where role == "admin" -> $admins
   say: "$admins.length admins"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     expect: contains "2"
@@ -1324,11 +1324,11 @@ tier: 2
 tags: [interpretation, operators]
 script: |
   $items = [{name: "Fix typo", urgency: "low"}, {name: "Server down", urgency: "critical"}, {name: "UI glitch", urgency: "medium"}]
-  --- on: go
-  run test()
   --- flow: test()
   rank $items by urgency -> $sorted
   say: "most urgent: $sorted[0].name"
+  --- on: go
+  run test()
 steps:
   - input: "go"
     runs: 3
