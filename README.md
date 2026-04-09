@@ -896,7 +896,20 @@ FIRM constructs fall into two tiers:
 
 **Tier 2 — Interpretation (scored as percentage).** Depends on LLM judgment: `>`, `is`, operators, `match:`, guard. Quality varies by model.
 
-Use `tests/conformance.test.firm.md` with `tests/runner.md` to verify your target model. A model with 100% Tier 1 and low Tier 2 is a valid but weak FIRM runtime. A model with <100% Tier 1 is not conformant.
+Use `tests/conformance.test.firm.md` to verify your target model. Load `bootstrap.md` + the test file into a fresh conversation and say "run tests". A model with 100% Tier 1 and low Tier 2 is a valid but weak FIRM runtime. A model with <100% Tier 1 is not conformant.
+
+### Tested models
+
+| Model | Tier 1 | Tier 2 | Status |
+|-------|--------|--------|--------|
+| Claude Opus | 100% | 100% | Fully conformant |
+| Claude Haiku 3.5 | 100% | 100% | Fully conformant |
+| GPT-5.2 Instant | 100% | 100% | Fully conformant |
+| Llama 3.1 8B | 73% | 74% | Not conformant — narrates execution instead of performing it |
+| Llama 3.2 3B | 63% | 42% | Not conformant — core mechanics work, guard/error handling broken |
+| Llama 2 7B | ~0% | — | Cannot follow FIRM instructions |
+
+Models at or above the Haiku capability level are fully conformant. Below that threshold, models tend to describe script behavior rather than execute it — a fundamental limitation of smaller models' instruction-following ability.
 
 ---
 
