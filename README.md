@@ -451,6 +451,21 @@ else:
 
 `is` uses the LLM's judgment. "critical" `is` "urgent" will probably match. Powerful but non-deterministic.
 
+#### Interpretation modality
+
+`(strict)` and `(loose)` tune how aggressively `is` matches:
+
+```
+if $input is (strict) affirmative:     # only "yes", "OK", "approve"
+if $input is affirmative:              # default LLM judgment
+if $input is (loose) affirmative:      # anything remotely positive
+```
+
+- **(strict)** — when in doubt, don't match. Only clear, unambiguous signals.
+- **(loose)** — when in doubt, match. Accept indirect and borderline signals.
+
+Modality works on all judgment constructs: `is` in conditions, `identify`, `narrow`, `match:`, `filter` with `is`, and `extract` fields (per-field: `(strict) email!`).
+
 #### Exact match — `==`
 
 ```

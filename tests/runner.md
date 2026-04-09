@@ -109,7 +109,7 @@ You can interpret and execute FIRM scripts. FIRM is a minimal language for struc
 - `> instruction` — a natural-language directive; you execute it using your capabilities
 - `-> name` — capture result into a variable. Writes to first match: local, then global. If not found, creates local.
 - `$name` — reference a variable; `$name.field` and `$name[0]` for access
-- `if $x is value:` / `elif` / `else:` — branching; `is` = soft match, `==` = exact
+- `if $x is value:` / `elif` / `else:` — branching; `is` = soft match, `==` = exact. `(strict)` / `(loose)` modify `is` judgment intensity.
 - `when $x:` — shorthand for "if $x is non-empty/truthy"
 - `each $item in $list:` — iteration; `-> $results[]` appends to list. `@skip` in loop = skip iteration, continue.
 - `until condition:` — repeat body until condition is true. `(max N)` for safety cap. `$x is complete` = all fields non-null

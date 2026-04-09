@@ -514,6 +514,42 @@ when $errors:
 
 Equivalent to `if $errors is not empty`.
 
+#### Interpretation modality
+
+`(strict)` and `(loose)` modify how the LLM exercises judgment in `is` comparisons.
+
+Three levels:
+- **(strict)** — match only on clear, unambiguous signals. When in doubt, don't match.
+- **(default, no annotation)** — normal LLM judgment.
+- **(loose)** — lean toward matching. Accept indirect or borderline signals.
+
+```
+if $input is (strict) affirmative:     # only "yes", "OK", "approve", "da"
+if $input is affirmative:              # default — LLM judges
+if $input is (loose) affirmative:      # anything remotely positive
+```
+
+Modality applies wherever LLM judgment is used for comparison or classification:
+
+- **`is`** in conditions: `if $x is (strict) critical:`
+- **`identify`**: `identify (strict) $input as agreement -> $ok`
+- **`narrow`**: `narrow (loose) $input to [yes, no, maybe] -> $answer`
+- **`match:`** in triggers: `match (strict): $input is a cancellation request`
+- **`filter`** with `is`: `filter $list where priority is (strict) critical -> $urgent`
+- **`extract`** per field: `(strict) email!` — extract only if clearly stated. `(loose) company` — infer from context even if not explicit.
+
+```
+extract from $input:
+  (strict) email!,
+  (loose) company,
+  name
+-> $contact
+```
+
+Does not apply to: `>` (express intent in the instruction text), `==` (already deterministic), `when` (mechanical truthiness).
+
+Modality is Tier 2 behavior — its effect depends on how well the model distinguishes interpretation levels.
+
 ### 6.7 Input operators
 
 Built-in verbs for classifying and structuring input. More compact than `>` instructions for common patterns.
@@ -911,6 +947,7 @@ FIRM constructs fall into two tiers for conformance testing:
 - `identify`, `narrow`, `extract`, `filter`, `rank`
 - Unquoted `say:`, `ask:`, `exit:`
 - Extract field constraints (interpreted hints)
+- Interpretation modality (`(strict)`, `(loose)`)
 
 A model with 100% Tier 1 and low Tier 2 is a valid but weak FIRM runtime. A model with <100% Tier 1 is not a conformant FIRM runtime.
 

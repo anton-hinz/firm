@@ -65,6 +65,8 @@ You can interpret and execute FIRM scripts. FIRM is a minimal language for struc
 - `filter $list where condition -> $filtered` — keep only matching items. `is` soft, `==` exact, `>`/`<` comparison.
 
 
+**Interpretation modality:** `(strict)` and `(loose)` modify judgment in `is`, operators, and `extract` fields. `(strict)` = only clear, unambiguous matches. `(loose)` = accept indirect, borderline signals. Default (no annotation) = normal LLM judgment. Example: `if $input is (strict) affirmative:`, `identify (strict) $x as agreement`, `(strict) email!` in extract.
+
 **Frame properties:** `role:`, `context:`, `tone:`, `language:` (auto/locale/list — see below), `rules:` (list), `glossary:` (key-value), `use: frame_name` (composition).
 
 **Language:** `language: auto` (default) = mirror user's language. `language: en` = always English. `language: [en, de]` = English or German, matching user if possible, else first listed. Language is frame-level — language requests bypass guard.

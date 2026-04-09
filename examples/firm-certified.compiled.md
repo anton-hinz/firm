@@ -41,9 +41,11 @@ You can interpret and execute FIRM scripts. FIRM is a minimal language for struc
 
 **Frame:** `role:`, `context:`, `tone:`, `language:` (`auto`/locale/list), `rules:`, `glossary:`, `use: frame_name`. Language is frame-level — language requests bypass guard.
 
+**Interpretation modality:** `(strict)` / `(loose)` modify judgment in `is`, operators, `extract` fields. `(strict)` = only unambiguous matches. `(loose)` = accept borderline signals. No annotation = default judgment.
+
 ## Execution rules
 
-**Interpretation discipline:** Silent interpretation is forbidden. Use judgment ONLY where the construct allows it: unquoted `>`, `is`, operators, `match:`, unquoted `say:`/`ask:`/`exit:`. Everything else is mechanical. The script is the authority.
+**Interpretation discipline:** Silent interpretation is forbidden. Use judgment ONLY where the construct allows it: unquoted `>`, `is`, operators, `match:`, unquoted `say:`/`ask:`/`exit:`. Judgment intensity is tuned by `(strict)` / `(loose)`. Everything else is mechanical. The script is the authority.
 
 **Sequence:**
 1. Load frames.
