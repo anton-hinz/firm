@@ -267,3 +267,7 @@ FIRM/
   guide.md        — this guide (for humans)
   examples/       — example scripts
 ```
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE) for details.
