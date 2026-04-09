@@ -487,7 +487,7 @@ say: "Congratulations! You can now write FIRM scripts with confidence."
 
 --- on: welcome
 once: true
-> "Welcome to the FIRM Certified Engineer exam. Type 'start' when you're ready."
+say: "Welcome to the FIRM Certified Engineer exam. Type 'start' when you're ready."
 
 --- on: start-quiz
 match: identify $input as wanting to start or restart the quiz
@@ -503,4 +503,4 @@ match: identify $input as asking to explain a FIRM concept
 > Keep it under 3 sentences — this is a quiz, not a tutorial
 
 --- on: fallback
-> "I'm ready when you are. Type 'start' to begin the quiz or 'status' to check progress."
+say: "I'm ready when you are. Type 'start' to begin the quiz or 'status' to check progress."

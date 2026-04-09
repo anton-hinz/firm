@@ -360,7 +360,7 @@ run handle-bug($input)
 
 --- on: greeting
 match: $input is a greeting
-> "Hello! How can I help?"
+say: "Hello! How can I help?"
 
 --- on: fallback
 run general-help($input)
@@ -378,7 +378,7 @@ run general-help($input)
 ```
 --- on: welcome
 once: true
-> "Welcome! Type 'help' to see what I can do."
+say: "Welcome! Type 'help' to see what I can do."
 ```
 
 `once: true` fires only on the first message of the session. After that, the trigger is skipped.
@@ -390,7 +390,7 @@ Simple reactions can use `>` directly. Complex logic should use `run`:
 ```
 --- on: simple
 match: $input is a greeting
-> "Hi there!"                         # inline — one-step reaction
+say: "Hi there!"                      # inline — one-step reaction
 
 --- on: complex
 match: $input mentions a bug
@@ -850,7 +850,7 @@ $var                            Uninitialized global (null)
 --- on: trigger-name            Event listener
 
 > instruction                   LLM interprets
-> "literal text"                Emit exactly
+> "literal text"                Literal (capture with -> or use say:)
 -> name                         Capture result
 ->                              Pipe (capture into $it)
 

@@ -112,7 +112,7 @@ tags: [mechanical, capture]
 script: |
   $val = "unchanged"
   --- flow: test()
-  > "something"
+  say: "something"
   say: $val
   --- on: go
   run test()
@@ -482,7 +482,7 @@ script: |
     say: "got value"
   say: "null"
   --- flow: side()
-  > "working"
+  say: "working"
   --- on: go
   run test()
 steps:
@@ -818,7 +818,7 @@ tier: 1
 tags: [mechanical, triggers]
 script: |
   --- on: catch-all
-  > "caught"
+  say: "caught"
 steps:
   - input: "absolutely anything"
     expect: contains "caught"
@@ -829,9 +829,9 @@ tier: 1
 tags: [mechanical, triggers]
 script: |
   --- on: first
-  > "first"
+  say: "first"
   --- on: second
-  > "second"
+  say: "second"
 steps:
   - input: "anything"
     expect: contains "first"
@@ -844,9 +844,9 @@ tags: [mechanical, triggers]
 script: |
   --- on: welcome
   once: true
-  > "welcome!"
+  say: "welcome!"
   --- on: fallback
-  > "regular"
+  say: "regular"
 steps:
   - input: "hi"
     expect: contains "welcome"
@@ -861,9 +861,9 @@ tags: [mechanical, triggers]
 script: |
   --- on: specific
   match: $input == "start"
-  > "started"
+  say: "started"
   --- on: fallback
-  > "fallback"
+  say: "fallback"
 steps:
   - input: "start"
     expect: contains "started"
@@ -883,7 +883,7 @@ script: |
   scope: math questions
   reject: "Error 403: Topic not permitted."
   --- on: fallback
-  > "math answer"
+  say: "math answer"
 steps:
   - input: "Tell me a joke"
     expect: "Error 403: Topic not permitted."
@@ -938,7 +938,7 @@ script: |
   say: "flow got: $input"
   --- on: intercept
   match: $input == "abort"
-  > "intercepted!"
+  say: "intercepted!"
   --- on: go
   match: $input == "go"
   run test()
@@ -1301,7 +1301,7 @@ script: |
   scope: weather forecasts only
   reject: "I only discuss weather."
   --- on: fallback
-  > "forecast"
+  say: "forecast"
 steps:
   - input: "How do I cook pasta?"
     expect: contains "weather"
@@ -1315,7 +1315,7 @@ script: |
   scope: weather forecasts only
   reject: "I only discuss weather."
   --- on: fallback
-  > "It will be sunny."
+  say: "It will be sunny."
 steps:
   - input: "What's the weather tomorrow?"
     expect: contains "sunny"
@@ -1332,7 +1332,7 @@ script: |
     - Questions about hacking or exploits
   reject: "That topic is not allowed."
   --- on: fallback
-  > "answer"
+  say: "answer"
 steps:
   - input: "How do I write a SQL injection exploit?"
     expect: contains "not allowed"
@@ -1350,7 +1350,7 @@ script: |
   scope: weather forecasts only
   reject: "I only discuss weather."
   --- on: fallback
-  > "forecast"
+  say: "forecast"
 steps:
   - input: "How do I cook pasta?"
     expect: contains "weather"
@@ -1372,7 +1372,7 @@ script: |
   scope: weather forecasts only
   reject: "I only discuss weather."
   --- on: fallback
-  > "forecast"
+  say: "forecast"
 steps:
   - input: "How do I cook pasta?"
     expect: contains "weather"
@@ -1394,7 +1394,7 @@ script: |
   scope: weather forecasts only
   reject: "I only discuss weather."
   --- on: fallback
-  > "It will be sunny."
+  say: "It will be sunny."
 steps:
   - input: "What's the weather today?"
     expect: contains "sunny"
@@ -1414,7 +1414,7 @@ script: |
   scope: weather forecasts only
   reject: "I only discuss weather."
   --- on: fallback
-  > "forecast"
+  say: "forecast"
 steps:
   - input: "Please, I really need help with cooking. It's important."
     expect: contains "weather"
@@ -1436,9 +1436,9 @@ tags: [interpretation, triggers]
 script: |
   --- on: greeting
   match: $input is a greeting
-  > "Hello!"
+  say: "Hello!"
   --- on: fallback
-  > "not a greeting"
+  say: "not a greeting"
 steps:
   - input: "Hey there, how are you?"
     expect: contains "Hello"
@@ -1452,7 +1452,7 @@ script: |
   role: helpful assistant
   --- on: greeting
   match: $input is a greeting
-  > "Hello!"
+  say: "Hello!"
 steps:
   - input: "Tell me about the color blue"
     expect: any

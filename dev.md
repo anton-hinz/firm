@@ -386,7 +386,6 @@ exit: explain why the data is insufficient
 
 ```
 say: "Your input is insufficient"
-> "Step 1 complete. Processing $count items."
 ask: "What is your email?"
 exit: "Schema validation failed: $errors"
 ```
@@ -406,10 +405,12 @@ Lines starting with `>` are natural-language directives to the LLM:
 
 These are the actual "code" — the LLM interprets them in the current frame context.
 
-A quoted `>` emits literal text (with variable expansion):
+A quoted `>` produces literal text (with variable expansion). Capture it or pass to `say:`:
 
 ```
 > "$name, your request has been logged."
+-> confirmation
+say: $confirmation
 ```
 
 
