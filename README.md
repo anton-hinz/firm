@@ -905,11 +905,27 @@ Use `tests/conformance.test.firm.md` to verify your target model. Load `bootstra
 | Claude Opus | 100% | 100% | Fully conformant |
 | Claude Haiku 3.5 | 100% | 100% | Fully conformant |
 | GPT-5.2 Instant | 100% | 100% | Fully conformant |
-| Llama 3.1 8B | 73% | 74% | Not conformant — narrates execution instead of performing it |
+| Llama 3.1 8B | 73% | 81% | Not conformant — core mechanics work, narrates complex constructs |
 | Llama 3.2 3B | 63% | 42% | Not conformant — core mechanics work, guard/error handling broken |
 | Llama 2 7B | ~0% | — | Cannot follow FIRM instructions |
 
 Models at or above the Haiku capability level are fully conformant. Below that threshold, models tend to describe script behavior rather than execute it — a fundamental limitation of smaller models' instruction-following ability.
+
+---
+
+## Related work
+
+The closest academic analog to FIRM is [CoRE](https://arxiv.org/abs/2405.06907) (Xu et al., 2024) — a system that uses LLMs as interpreters for natural language programs. CoRE employs a 4-phase execution loop (observation retrieval, prompt construction, output analysis, logic representation) with external memory and tool integration.
+
+Key differences:
+
+- **Infrastructure.** CoRE requires a Python runtime that orchestrates execution, manages memory, and routes tool calls. FIRM requires nothing — the script is loaded into the LLM's context and the model is the runtime.
+- **Interpretation discipline.** CoRE treats all execution as interpretation — there is no explicit boundary between mechanical and judgment-based constructs. FIRM draws a hard line: `->`, `$`, `==`, control flow are mechanical; `>`, `is`, operators are interpreted. This division is what makes FIRM scripts testable and predictable.
+- **Guard and scope control.** CoRE has no analog to FIRM's guard — input filtering, prompt injection resistance, and scope enforcement are not addressed.
+
+CoRE's progress summary mechanism (re-reading execution state before each step) parallels FIRM's re-ground technique (re-reading guard scope before each response). Both solve the same problem — compliance drift in long conversations — from different directions: CoRE with a heavy framework, FIRM with a 7-word instruction in the bootstrap.
+
+Both projects observe the same model capability gap: CoRE reports 92% valid plans on GPT-4 vs 57% on Mixtral-8x7B. FIRM conformance tests show 100% on Haiku/Opus vs 73% T1 on Llama 3.1 8B. The gap is fundamental to smaller models' instruction-following ability, not addressable by framework design alone.
 
 ---
 
