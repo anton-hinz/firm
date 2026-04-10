@@ -1014,7 +1014,8 @@ script: |
   each $item in $items:
     > "$item"
     -> $results[]
-  say: "count: $results.length"
+  > Count items in $results ->
+  say: "count: $it"
   --- on: go
   run test()
 steps:
@@ -1265,7 +1266,8 @@ script: |
   $users = [{name: "Alice", role: "admin"}, {name: "Bob", role: "user"}, {name: "Carol", role: "admin"}]
   --- flow: test()
   filter $users where role == "admin" -> $admins
-  say: "$admins.length admins"
+  > Count items in $admins ->
+  say: "$it admins"
   --- on: go
   run test()
 steps:

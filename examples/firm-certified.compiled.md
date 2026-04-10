@@ -499,8 +499,7 @@ run show-status()
 
 --- on: explain-concept
 match: identify $input as asking to explain a FIRM concept
-> Briefly explain the concept the user is asking about, based on your knowledge of the FIRM spec
-> Keep it under 3 sentences — this is a quiz, not a tutorial
+> Briefly explain the FIRM concept the user is asking about — keep it under 3 sentences
 
 --- on: fallback
 say: "I'm ready when you are. Type 'start' to begin the quiz or 'status' to check progress."
