@@ -972,9 +972,11 @@ A model with 100% Tier 1 and low Tier 2 is a valid but weak FIRM runtime. A mode
 
 When the user describes agent behavior in free form, generate a complete `.firm` script.
 
+**Target:** The user may specify `target: full` (default) or `target: compat`. If compat, generate using only lowered constructs (see Lowering rules below).
+
 **Process:**
 1. Identify: role/frame, tools needed, triggers, flows, which operators fit
-2. Generate the script
+2. Generate the script (apply lowering rules if target is compat)
 
 **Rules:**
 - Only use constructs from the spec. Do not invent syntax.
@@ -1008,6 +1010,10 @@ When the user asks to check, review, lint, or test a `.firm` script.
 
 **Interpretation discipline** — verify:
 - No `>` doing mechanical work, quotes where literal output intended, `==` where exact match needed
+
+**Compat readiness** (if user asks to validate for compat target):
+- Flag constructs that require lowering: `--- guard`, `ask:` mid-flow, `@retry`/`@run`/`@say` handlers, semantic `match:` triggers, `once:` triggers
+- Suggest lowered equivalents
 
 ### Phase 2: Dynamic testing (if test scenarios provided)
 
@@ -1095,6 +1101,12 @@ Be specific (reference test names), suggest fixes, don't manufacture issues.
 
 When the user asks to compile, build, or export a `.firm` script.
 
+**Targets:**
+- `compile` or `compile for: full` (default) — tree-shaken bootstrap + original script
+- `compile for: compat` — tree-shaken bootstrap + **lowered** script for weak models (8B class)
+
+### Full target (default)
+
 **Process:**
 1. Identify which FIRM features the script actually uses
 2. Generate a minimal bootstrap covering ONLY those features
@@ -1117,3 +1129,39 @@ When the user asks to compile, build, or export a `.firm` script.
 - The bootstrap must be sufficient for any LLM to execute the script.
 - Omit everything the script doesn't use.
 - Always include the interpretation discipline rule.
+
+### Compat target
+
+**Process:**
+1. Apply lowering rules to transform the script
+2. Generate a minimal bootstrap covering the lowered constructs
+3. Output: bootstrap + lowered script in one self-contained file
+
+**Lowering rules** (compiler transforms constructs, not content):
+
+**1. guard → frame rules + narrow routing**
+
+`--- guard` section is removed. Its scope becomes frame `rules:` with re-ground instruction ("Before every response, re-read these rules"). Guard scope check becomes `narrow $input to [categories..., off-topic]` at the top of the entry flow. Reject on "off-topic" via `say:` + `exit:`. Categories are derived from the guard's `scope:`, `allow:`, and `deny:` lists.
+
+**2. semantic triggers → single entry + narrow routing**
+
+Multiple `--- on:` with `match:` are merged into a single `--- on: any` trigger that calls an entry flow. Inside the entry flow, `narrow $input to [...]` classifies the input and `if` branches route to the appropriate flow. Fallback is the else branch.
+
+**3. once: → global flag**
+
+`once: true` on a trigger becomes a global boolean (`$flag = false`) checked with `if not $flag:` in the entry flow. After firing: `$flag = true`.
+
+**4. ask: → flow split + global state**
+
+Mid-flow `ask:` is split into: `say:` the question + set a global flag + `exit:`. On the next message, the entry flow checks the flag and routes to a continuation flow that processes the response.
+
+**5. @handler → explicit error check**
+
+`@say:`, `@exit:`, `@run` before a risky step become `when $error:` checks after the step. `@retry (max N)` becomes an `until` loop with a counter. `@skip` (default) needs no lowering — errors naturally produce null.
+
+**What the compiler does NOT change:**
+- Frame content (role, tone, rules text, glossary)
+- Flow logic (`>`, `->`, `$it`, conditions, loops)
+- Operator usage (identify, narrow, extract, filter, rank)
+- Quotes rule, variable names, data flow
+- Tool call syntax (only error handling around them changes)
