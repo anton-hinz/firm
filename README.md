@@ -149,7 +149,7 @@ There are three ways to run a FIRM script:
 
 **Direct execution** — load `bootstrap.md` (the minimal runtime) + your script into an LLM. The bootstrap teaches the LLM how to interpret FIRM. The script is the agent.
 
-**Compiled** — ask dev mode to compile your script. The output is a single self-contained file: a tree-shaken bootstrap + the script. Load it into any LLM and the agent works with no other dependencies.
+**Compiled** — ask dev mode to compile your script. The output is a single self-contained file: a tree-shaken bootstrap + the script. Load it into any LLM and the agent works with no other dependencies. Use `compile for: compat` to target weaker models (8B class) — the compiler lowers complex constructs into simpler equivalents.
 
 ### Development workflow
 
@@ -910,6 +910,22 @@ Use `tests/conformance.test.firm.md` to verify your target model. Load `bootstra
 | Llama 2 7B | ~0% | — | Cannot follow FIRM instructions |
 
 Models at or above the Haiku capability level are fully conformant. Below that threshold, models tend to describe script behavior rather than execute it — a fundamental limitation of smaller models' instruction-following ability.
+
+### Compat compilation
+
+For models below the conformance threshold, FIRM supports a compat compilation target (`compile for: compat` in dev mode). The compiler lowers constructs that weak models can't handle into simpler equivalents:
+
+| Full FIRM | Compat (lowered) | Why |
+|-----------|-----------------|-----|
+| `--- guard` | frame `rules:` + `narrow` routing | Guard as a section is not followed; frame rules are |
+| Semantic `match:` triggers | Single entry flow + `narrow` | Trigger pipeline not reliable |
+| `once: true` | Global flag + `if` | Trigger modifiers ignored |
+| `ask:` mid-flow | `say:` + flag + flow split | Multi-turn flow state not held |
+| `@retry`, `@run`, `@say` | `when $error:` after step | Handler register not tracked |
+
+The compiler transforms constructs, not content — scope descriptions, messages, and flow logic are preserved. See `examples/lowering-demo.md` for a side-by-side comparison.
+
+Note: rules are derived from conformance test pass/fail patterns, not from quantitative benchmarks. A construct is lowered if it consistently fails on sub-conformant models, regardless of the specific failure rate.
 
 ---
 

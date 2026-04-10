@@ -1,4 +1,4 @@
-# FIRM Lowering Demo
+git # FIRM Lowering Demo
 
 Shows the same agent in Full FIRM and Compiled (compat) versions.
 Compat version uses only constructs that weak models (8B) handle reliably.
